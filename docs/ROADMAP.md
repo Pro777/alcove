@@ -1,13 +1,15 @@
-# Roadmap
+# 🗺️ Roadmap
 
-## ✅ Current release (v0.2.0)
+## ✅ Current release (v0.3.0)
 
 - Three-stage pipeline (ingest → index → query)
 - Public-domain seed corpus with SHA-256 manifest
 - Web UI (upload + search)
 - PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, TXT
 - ChromaDB and zvec vector backends
+- Plugin system for custom extractors, backends, and embedders
 - CI across Python 3.10, 3.11, 3.12
+- Apache 2.0 license
 
 ## 🔜 Planned
 

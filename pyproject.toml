@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "python-docx>=1.0"]
+dev = ["pytest>=8.3", "python-docx>=1.0", "httpx>=0.27"]
 docx = ["python-docx>=1.0"]
 semantic = ["sentence-transformers>=3.0"]
 epub = ["ebooklib>=0.18,<1.0"]

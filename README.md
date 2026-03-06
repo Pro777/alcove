@@ -27,6 +27,14 @@
 pip install alcove-search
 ```
 
+**Optional extras:**
+
+| Extra | Install command | What it adds |
+|-------|----------------|--------------|
+| Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers (~80 MB model download on first use) |
+| EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
+| DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
+
 ## ⚡ Quick Start
 
 ```bash

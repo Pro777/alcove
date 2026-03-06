@@ -27,6 +27,7 @@ class SentenceTransformerEmbedder:
         from sentence_transformers import SentenceTransformer
 
         self.model = SentenceTransformer(model_name)
+        self.dim = self.model.get_sentence_embedding_dimension()
 
     def embed(self, texts: List[str]) -> List[List[float]]:
         embeddings = self.model.encode(texts, convert_to_numpy=True)
