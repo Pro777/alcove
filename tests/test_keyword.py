@@ -173,7 +173,7 @@ class TestAPIKeywordMode:
             "distances": [[0.1]],
         }
         monkeypatch.setattr(
-            "alcove.query.retriever.query_keyword",
+            "alcove.query.api.query_keyword",
             lambda q, n_results=3: kw_result,
         )
 
@@ -193,7 +193,7 @@ class TestAPIKeywordMode:
             "distances": [[0.15]],
         }
         monkeypatch.setattr(
-            "alcove.query.retriever.query_hybrid",
+            "alcove.query.api.query_hybrid",
             lambda q, n_results=3, collections=None: hybrid_result,
         )
 
@@ -223,7 +223,7 @@ class TestAPIKeywordMode:
             "metadatas": [[{"source": "a.txt", "collection": "default"}]],
         }
         monkeypatch.setattr(
-            "alcove.query.retriever.query_keyword",
+            "alcove.query.api.query_keyword",
             lambda q, n_results=3: kw_result,
         )
 
