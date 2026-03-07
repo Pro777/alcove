@@ -98,6 +98,21 @@ def cmd_plugins(_args):
         print(f"  {p['type']:10s}  {p['name']:20s}  {p['module']}")
 
 
+def cmd_collections(_args):
+    from alcove.index.backend import get_backend
+    from alcove.index.embedder import get_embedder
+    try:
+        backend = get_backend(get_embedder())
+        colls = backend.list_collections()
+    except Exception:
+        colls = []
+    if not colls:
+        print("No collections found.")
+        return
+    for c in colls:
+        print(f"  {c['name']}  ({c['doc_count']} docs)")
+
+
 def cmd_seed_demo(_args):
     import subprocess
     from pathlib import Path
@@ -153,6 +168,10 @@ def main():
 
     # query (hidden alias for backwards compatibility)
     _add_search_parser(sub, "query", hidden=True)
+
+    # collections
+    p_colls = sub.add_parser("collections", help="List named collections")
+    p_colls.set_defaults(func=cmd_collections)
 
     # status
     p_status = sub.add_parser("status", help="Show index and configuration status")
