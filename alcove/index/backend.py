@@ -41,7 +41,7 @@ class ChromaBackend:
 
     def list_collections(self) -> List[Dict[str, object]]:
         """Return distinct collection names with document counts."""
-        all_docs = self._collection.get()
+        all_docs = self._collection.get(include=["metadatas"])
         counts: Dict[str, int] = {}
         for meta in (all_docs.get("metadatas") or []):
             name = (meta or {}).get("collection", "default")
