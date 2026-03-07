@@ -1,4 +1,4 @@
-<img src="docs/assets/logo.svg" alt="Alcove" height="56">
+<img src="https://raw.githubusercontent.com/Pro777/alcove/main/docs/assets/logo.svg" alt="Alcove" height="56">
 
 <p>
   <a href="https://github.com/Pro777/alcove/actions/workflows/ci.yml"><img src="https://github.com/Pro777/alcove/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -44,7 +44,7 @@ alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
 
-<img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
+<img src="https://raw.githubusercontent.com/Pro777/alcove/main/docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
 
 ## 🔒 Trust Model
 
