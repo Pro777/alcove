@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .retriever import query_text
+from .retriever import query_hybrid, query_keyword, query_text
 
 
 def main():
@@ -17,6 +17,10 @@ def main():
     search_parser.add_argument(
         "--collection", action="append", default=None,
         help="Filter by collection (repeatable)",
+    )
+    search_parser.add_argument(
+        "--mode", choices=["semantic", "keyword", "hybrid"],
+        default="semantic", help="Search mode (default: semantic)",
     )
 
     # Collections subcommand
@@ -33,22 +37,38 @@ def main():
         query = args.query
         k = args.k
         collections = args.collection
+        mode = args.mode
     else:
         # No subcommand: treat all args as a legacy-style search
         legacy = argparse.ArgumentParser()
         legacy.add_argument("query", nargs="?", default="")
         legacy.add_argument("--k", type=int, default=3)
         legacy.add_argument("--collection", action="append", default=None)
+        legacy.add_argument(
+            "--mode", choices=["semantic", "keyword", "hybrid"],
+            default="semantic",
+        )
         args = legacy.parse_args()
         query = args.query
         k = args.k
         collections = args.collection
+        mode = args.mode
 
     if not query.strip():
         parser.error('Usage: alcove search "your question here"')
 
-    res = query_text(query, n_results=k, collections=collections)
+    res = _run_query(query, k=k, mode=mode, collections=collections)
     print(json.dumps(res, indent=2))
+
+
+def _run_query(query, k=3, mode="semantic", collections=None):
+    """Dispatch to the correct retriever based on search mode."""
+    if mode == "keyword":
+        return query_keyword(query, n_results=k)
+    elif mode == "hybrid":
+        return query_hybrid(query, n_results=k, collections=collections)
+    else:
+        return query_text(query, n_results=k, collections=collections)
 
 
 def _list_collections():

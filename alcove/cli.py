@@ -44,9 +44,20 @@ def _format_search_results(result):
         print(f'  "{excerpt}"')
 
 
+def _dispatch_search(query, k=3, mode="semantic"):
+    """Route to the correct retriever based on search mode."""
+    from alcove.query.retriever import query_hybrid, query_keyword, query_text
+    if mode == "keyword":
+        return query_keyword(query, n_results=k)
+    elif mode == "hybrid":
+        return query_hybrid(query, n_results=k)
+    else:
+        return query_text(query, n_results=k)
+
+
 def cmd_search(args):
-    from alcove.query.retriever import query_text
-    result = query_text(args.query, n_results=args.k)
+    mode = getattr(args, "mode", "semantic")
+    result = _dispatch_search(args.query, k=args.k, mode=mode)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -109,6 +120,10 @@ def _add_search_parser(sub, name, hidden=False):
     p.add_argument("query", help="Search terms")
     p.add_argument("--k", type=int, default=3, help="Number of results (default: 3)")
     p.add_argument("--json", action="store_true", default=False, help="Output raw JSON instead of formatted results")
+    p.add_argument(
+        "--mode", choices=["semantic", "keyword", "hybrid"],
+        default="semantic", help="Search mode (default: semantic)",
+    )
     p.set_defaults(func=cmd_search)
     return p
 

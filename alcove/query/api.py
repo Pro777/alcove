@@ -15,7 +15,7 @@ from starlette.templating import Jinja2Templates
 import uvicorn
 
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
-from .retriever import query_text
+from .retriever import query_hybrid, query_keyword, query_text
 
 app = FastAPI(title="Alcove")
 
@@ -36,6 +36,7 @@ class QueryIn(BaseModel):
     query: str
     k: int = 3
     collections: Optional[List[str]] = None
+    mode: str = "semantic"
 
 
 @app.get("/health")
@@ -56,13 +57,13 @@ def root(request: Request):
 
 
 @app.get("/search", response_class=HTMLResponse)
-def search(request: Request, q: str = "", k: int = 5, collections: str = ""):
+def search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
     coll_list: Optional[List[str]] = None
     if collections.strip():
         coll_list = [c.strip() for c in collections.split(",") if c.strip()]
     results: list = []
     if q.strip():
-        raw = query_text(q, k, collections=coll_list)
+        raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
         documents = raw.get("documents", [[]])[0]
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
@@ -72,8 +73,8 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = ""):
             highlighted = _highlight(escaped, q)
             results.append({
                 "text": highlighted,
-                "source": meta.get("source", "unknown"),
-                "collection": meta.get("collection", "default"),
+                "source": meta.get("source", "unknown") if isinstance(meta, dict) else "unknown",
+                "collection": meta.get("collection", "default") if isinstance(meta, dict) else "default",
                 "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
             })
 
@@ -85,7 +86,7 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = ""):
 
 @app.post("/query")
 def query(inp: QueryIn):
-    return query_text(inp.query, inp.k, collections=inp.collections)
+    return _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
 
 
 @app.post("/ingest")
@@ -170,6 +171,21 @@ def list_collections():
         return backend.list_collections()
     except Exception:
         return []
+
+
+def _dispatch_query(
+    q: str,
+    k: int,
+    mode: str = "semantic",
+    collections: Optional[List[str]] = None,
+) -> dict:
+    """Route to the correct retriever based on search mode."""
+    if mode == "keyword":
+        return query_keyword(q, n_results=k)
+    elif mode == "hybrid":
+        return query_hybrid(q, n_results=k, collections=collections)
+    else:
+        return query_text(q, n_results=k, collections=collections)
 
 
 def _highlight(escaped_text: str, query: str) -> str:

@@ -21,6 +21,22 @@
         aria-label="Search your documents">
     </div>
     <input type="hidden" id="collections-hidden" name="collections" value="">
+
+    <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
+      <label class="mode-option">
+        <input type="radio" name="mode" value="semantic" checked>
+        <span class="mode-label">Semantic</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="keyword">
+        <span class="mode-label">Keyword</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="hybrid">
+        <span class="mode-label">Hybrid</span>
+      </label>
+    </fieldset>
+
     <button type="submit" class="search-btn">Search</button>
   </form>
 
@@ -34,7 +50,7 @@
     id="upload-zone"
     role="button"
     tabindex="0"
-    aria-label="Upload files — drop files here or press Enter to browse"
+    aria-label="Upload files: drop files here or press Enter to browse"
     aria-describedby="formats-note">
     <span class="upload-icon" aria-hidden="true">&#8679;</span>
     <span class="upload-label">Drop files here or click to browse</span>
@@ -57,6 +73,36 @@
   <p class="formats-note" id="formats-note">
     Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
   </p>
+
+<style>
+  .search-mode-selector {
+    border: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+  .mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #999);
+  }
+  .mode-option input[type="radio"] {
+    accent-color: var(--accent, #7c6cff);
+    margin: 0;
+  }
+  .mode-option input[type="radio"]:checked + .mode-label {
+    color: var(--text-primary, #fff);
+    font-weight: 500;
+  }
+  .mode-label {
+    transition: color 0.15s ease;
+  }
+</style>
 
 <script>
 (function () {
@@ -157,7 +203,7 @@
           if (data[j].status === "skipped") {
             skipped.push(data[j].filename + " (skipped: " + data[j].reason + ")");
           } else {
-            indexed.push(data[j].filename + " \u2014 " + data[j].chunks + " chunks");
+            indexed.push(data[j].filename + " - " + data[j].chunks + " chunks");
           }
         }
         var msg = "";
