@@ -7,6 +7,8 @@
   <a href="https://github.com/Pro777/alcove/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
+**Index your world. Share it with the universe.**
+
 **Alcove** is a local-first document search library. Install it, point it at your files, and search. No server, no sign-up, no data leaves your disk.
 
 > **[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
