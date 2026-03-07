@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alcove — CLI Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d1117;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    color: #c9d1d9;
+  }
+
+  .slideshow-wrapper {
+    width: 1200px;
+    height: 700px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .progress-bar-track { width: 100%; height: 3px; background: #161b22; flex-shrink: 0; }
+  .progress-bar-fill  { height: 100%; background: #3fb950; width: 0%; }
+
+  .scene-label {
+    text-align: center;
+    font-size: 11px;
+    color: #6e7681;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 0 8px;
+    flex-shrink: 0;
+    height: 30px;
+  }
+
+  .terminal-window {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    margin: 0 40px;
+  }
+
+  /* scanlines */
+  .terminal-window::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px, transparent 3px,
+      rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .terminal-titlebar {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .traffic-lights { display: flex; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-red    { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green  { background: #28c840; }
+  .terminal-title { font-size: 12px; color: #6e7681; letter-spacing: 0.05em; flex: 1; text-align: center; }
+
+  .terminal-body {
+    flex: 1;
+    padding: 28px 36px;
+    overflow: hidden;
+  }
+
+  .terminal-content { font-size: 14px; line-height: 1.75; }
+  .tline { display: block; white-space: pre; }
+
+  /* colors */
+  .c-prompt   { color: #58a6ff; }
+  .c-cmd      { color: #c9d1d9; }
+  .c-output   { color: #c9d1d9; }
+  .c-dim      { color: #6e7681; }
+  .c-score    { color: #3fb950; }
+  .c-filepath { color: #79c0ff; }
+  .c-scorenum { color: #ffa657; }
+  .c-err      { color: #f85149; }
+  .c-bracket  { color: #6e7681; }
+  .c-success  { color: #3fb950; }
+
+  /* cursor */
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background: #c9d1d9;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .controls-area {
+    padding: 12px 40px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .scene-dots { display: flex; gap: 10px; }
+  .scene-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #30363d; cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .scene-dot.active { background: #3fb950; transform: scale(1.35); }
+  .scene-dot:hover  { background: #58a6ff; }
+
+  .controls-buttons { display: flex; gap: 12px; }
+  .ctrl-btn {
+    background: #161b22;
+    border: 1px solid #30363d;
+    color: #6e7681;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .ctrl-btn:hover { color: #c9d1d9; border-color: #6e7681; background: #21262d; }
+  .ctrl-btn.primary { color: #c9d1d9; border-color: #3fb950; }
+  .ctrl-btn.primary:hover { background: #1a2d1a; }
+</style>
+</head>
+<body>
+
+<div class="slideshow-wrapper">
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <div class="scene-label" id="sceneLabel"></div>
+  <div class="terminal-window">
+    <div class="terminal-titlebar">
+      <div class="traffic-lights">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+      </div>
+      <div class="terminal-title">Terminal &mdash; alcove</div>
+    </div>
+    <div class="terminal-body">
+      <div class="terminal-content" id="terminalContent"></div>
+    </div>
+  </div>
+  <div class="controls-area">
+    <div class="scene-dots" id="sceneDots"></div>
+    <div class="controls-buttons">
+      <button class="ctrl-btn" id="btnPrev">&#9664; prev</button>
+      <button class="ctrl-btn primary" id="btnPlayPause">&#9646;&#9646; pause</button>
+      <button class="ctrl-btn" id="btnNext">next &#9654;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Scene data
+// Each line: { segs: [{text,cls},...], tw: bool, pre: ms_delay_before_this_line }
+// tw=true  = typewriter char-by-char for first segment
+// tw=false = instant appear
+
+function seg(text, cls) { return { text, cls }; }
+
+function rline(bullet, score, sep, path, pre) {
+  return {
+    segs: [
+      seg(bullet, 'c-score'),
+      seg(score,  'c-scorenum'),
+      seg(sep,    'c-dim'),
+      seg(path,   'c-filepath'),
+    ],
+    tw: false,
+    pre: pre !== undefined ? pre : 140,
+  };
+}
+
+function iline(text, cls, pre) {
+  return { segs: [seg(text, cls)], tw: false, pre: pre !== undefined ? pre : 50 };
+}
+
+function tline(text, cls, pre) {
+  return { segs: [seg(text, cls)], tw: true, pre: pre !== undefined ? pre : 0 };
+}
+
+function blank(pre) { return { segs: [seg('', 'c-output')], tw: false, pre: pre !== undefined ? pre : 50 }; }
+
+const SCENES = [
+  {
+    title: 'Keyword search: empty',
+    lines: [
+      tline('$ grep -r "father" transcripts/', 'c-prompt', 0),
+      blank(80),
+      iline('  0 matches.', 'c-err', 100),
+      blank(60),
+      iline('  [Subject A said "my old man."',  'c-bracket', 200),
+      iline('   Subject B talked about absence.','c-bracket', 60),
+      iline('   Subject C told a fishing story.','c-bracket', 60),
+      iline('   Keyword search: empty.]',        'c-bracket', 60),
+    ]
+  },
+  {
+    title: 'Alcove finds what keyword misses',
+    lines: [
+      tline('$ alcove search "relationship with father" \\', 'c-prompt', 0),
+      tline('    --collection interviews',                   'c-cmd',    20),
+      blank(60),
+      iline('  Searching 40 hours of transcripts...', 'c-dim', 80),
+      iline('  (local · no cloud)',                   'c-dim', 40),
+      blank(300),
+      rline('  ● score: ', '0.91', '  │  ', 'henderson_interview.txt:847', 160),
+      iline('    "My old man never said it directly, but you', 'c-output', 30),
+      iline('     could tell by the way he watched us..."',   'c-output', 30),
+      blank(40),
+      rline('  ● score: ', '0.87', '  │  ', 'chen_interview.txt:1203', 120),
+      iline('    "There was just this absence where a father', 'c-output', 30),
+      iline('     should have been..."',                      'c-output', 30),
+      blank(40),
+      rline('  ● score: ', '0.84', '  │  ', 'kowalski_interview.txt:2891', 120),
+      iline('    "Every time we went fishing, just the two', 'c-output', 30),
+      iline('     of us, I understood something..."',        'c-output', 30),
+    ]
+  },
+  {
+    title: 'Plain language · multiple formats',
+    lines: [
+      tline('$ alcove search "what did subjects say about grief" \\', 'c-prompt', 0),
+      tline('    --collection interviews \\',    'c-cmd', 20),
+      tline('    --collection research-notes \\','c-cmd', 20),
+      tline('    --collection production-docs',  'c-cmd', 20),
+      blank(60),
+      iline('  Searching across 3 collections, 847 documents...', 'c-dim', 80),
+      blank(320),
+      rline('  ● score: ', '0.93', '  │  ', 'producer_notes_2019.md:44',    160),
+      rline('  ● score: ', '0.89', '  │  ', 'chen_interview.txt:3021',       120),
+      rline('  ● score: ', '0.86', '  │  ', 'background_research.pdf:118',   120),
+    ]
+  },
+  {
+    title: 'Search across all productions',
+    lines: [
+      tline('$ alcove search "labor and dignity" --all-collections', 'c-prompt', 0),
+      blank(60),
+      iline('  Searching across ALL productions',         'c-dim', 80),
+      iline('  (12 collections · 2,847 documents)...', 'c-dim', 40),
+      blank(360),
+      iline('  Results span: Film A (2019), Film B (2021), Film C (2023)', 'c-dim', 80),
+      blank(60),
+      rline('  ● ', '0.94', '  │  ', 'film_b/chen_interview.txt',           160),
+      rline('  ● ', '0.91', '  │  ', 'film_a/archive_footage_notes.md',     120),
+      rline('  ● ', '0.88', '  │  ', 'film_c/subject_d_transcript.txt',     120),
+    ]
+  },
+  {
+    title: 'Your data never left your machine',
+    lines: [
+      tline('$ alcove status', 'c-prompt', 0),
+      blank(80),
+      iline('  Index:    /Users/kevin/Documents/productions/.alcove/', 'c-output', 60),
+      iline('  Vectors:  47,291 chunks indexed',             'c-output', 60),
+      iline('  Model:    all-MiniLM-L6-v2 (local · offline)','c-output', 60),
+      iline('  Network:  none required',                     'c-output', 60),
+      blank(80),
+      iline('  Your data has never left your machine.', 'c-success', 120),
+    ]
+  },
+];
+
+const CHAR_SPEED  = 26;   // ms per char
+const PAUSE_AFTER = 2200; // ms after last line before advancing
+
+// DOM
+const terminalContent = document.getElementById('terminalContent');
+const progressFill    = document.getElementById('progressFill');
+const sceneLabel      = document.getElementById('sceneLabel');
+const sceneDots       = document.getElementById('sceneDots');
+const btnPrev         = document.getElementById('btnPrev');
+const btnPlayPause    = document.getElementById('btnPlayPause');
+const btnNext         = document.getElementById('btnNext');
+
+// Dots
+SCENES.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'scene-dot' + (i === 0 ? ' active' : '');
+  d.addEventListener('click', () => jumpToScene(i));
+  sceneDots.appendChild(d);
+});
+
+// State
+let currentScene = 0;
+let playing      = true;
+let timers       = [];
+
+function addTimer(fn, ms) { const t = setTimeout(fn, Math.max(0, ms)); timers.push(t); }
+function clearTimers()    { timers.forEach(clearTimeout); timers = []; }
+function updateDots()     { document.querySelectorAll('.scene-dot').forEach((d,i) => d.classList.toggle('active', i === currentScene)); }
+
+// Build instant line element
+function buildInstantLine(lineSpec) {
+  const el = document.createElement('span');
+  el.className = 'tline';
+  lineSpec.segs.forEach(s => {
+    const span = document.createElement('span');
+    span.className = s.cls;
+    span.textContent = s.text;
+    el.appendChild(span);
+  });
+  return el;
+}
+
+// Play scene
+function playScene(idx) {
+  clearTimers();
+  currentScene = idx;
+  updateDots();
+  progressFill.style.width = '0%';
+
+  const scene = SCENES[idx];
+  sceneLabel.textContent = scene.title;
+  terminalContent.innerHTML = '';
+
+  let cursor = null;
+  const schedule = [];
+  let t = 0;
+
+  scene.lines.forEach((line, li) => {
+    t += line.pre;
+    const startAt = t;
+    let duration = 0;
+
+    if (line.tw) {
+      const text = line.segs[0].text;
+      duration = text.length * CHAR_SPEED + CHAR_SPEED;
+    }
+
+    schedule.push({ line, li, startAt, duration, isLast: li === scene.lines.length - 1 });
+    t += duration;
+  });
+
+  const totalSceneMs = t + PAUSE_AFTER;
+
+  const progressStart = Date.now();
+  function tickProgress() {
+    if (!playing) return;
+    const pct = Math.min(100, ((Date.now() - progressStart) / totalSceneMs) * 100);
+    progressFill.style.width = pct + '%';
+    if (pct < 100) addTimer(tickProgress, 80);
+  }
+  addTimer(tickProgress, 80);
+
+  schedule.forEach(({ line, startAt, duration, isLast }) => {
+    addTimer(() => {
+      if (cursor) { cursor.remove(); cursor = null; }
+
+      if (line.tw) {
+        const lineEl = document.createElement('span');
+        lineEl.className = 'tline';
+        const span = document.createElement('span');
+        span.className = line.segs[0].cls;
+        span.textContent = '';
+        lineEl.appendChild(span);
+
+        cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        lineEl.appendChild(cursor);
+        terminalContent.appendChild(lineEl);
+
+        const text = line.segs[0].text;
+        for (let ci = 0; ci <= text.length; ci++) {
+          const capturedI = ci;
+          addTimer(() => { span.textContent = text.slice(0, capturedI); }, ci * CHAR_SPEED);
+        }
+
+        if (isLast) {
+          addTimer(() => {
+            if (cursor) { cursor.remove(); cursor = null; }
+            cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            terminalContent.appendChild(cursor);
+            if (playing) addTimer(() => { if (playing) playScene((currentScene + 1) % SCENES.length); }, PAUSE_AFTER);
+          }, duration);
+        }
+
+      } else {
+        const lineEl = buildInstantLine(line);
+        terminalContent.appendChild(lineEl);
+
+        if (isLast) {
+          cursor = document.createElement('span');
+          cursor.className = 'cursor';
+          terminalContent.appendChild(cursor);
+          if (playing) addTimer(() => { if (playing) playScene((currentScene + 1) % SCENES.length); }, PAUSE_AFTER);
+        }
+      }
+    }, startAt);
+  });
+}
+
+// Controls
+function jumpToScene(idx) {
+  playing = true;
+  btnPlayPause.textContent = '&#9646;&#9646; pause';
+  playScene(idx);
+}
+
+btnPlayPause.addEventListener('click', () => {
+  if (playing) {
+    playing = false;
+    clearTimers();
+    btnPlayPause.innerHTML = '&#9654; play';
+  } else {
+    playing = true;
+    btnPlayPause.innerHTML = '&#9646;&#9646; pause';
+    playScene(currentScene);
+  }
+});
+
+btnPrev.addEventListener('click', () => {
+  playing = true;
+  btnPlayPause.innerHTML = '&#9646;&#9646; pause';
+  playScene((currentScene - 1 + SCENES.length) % SCENES.length);
+});
+
+btnNext.addEventListener('click', () => {
+  playing = true;
+  btnPlayPause.innerHTML = '&#9646;&#9646; pause';
+  playScene((currentScene + 1) % SCENES.length);
+});
+
+// Boot
+playScene(0);
+</script>
+</body>
+</html>
