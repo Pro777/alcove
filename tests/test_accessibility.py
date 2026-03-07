@@ -9,13 +9,20 @@ For full axe/WCAG coverage see the tracking issue:
 https://github.com/Pro777/alcove-starter-private/issues/80
 """
 
+import re
 from pathlib import Path
 
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "alcove" / "web" / "templates"
+TEMPLATES_DIR = TEMPLATE_DIR  # alias used by new tests
+STATIC_DIR = Path(__file__).resolve().parents[1] / "alcove" / "web" / "static"
 
 
 def _read(name: str) -> str:
     return (TEMPLATE_DIR / name).read_text(encoding="utf-8")
+
+
+def _read_path(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 class TestBaseTemplate:
@@ -23,9 +30,15 @@ class TestBaseTemplate:
         html = _read("base.html")
         assert 'lang="en"' in html, "base.html must declare lang=\"en\" on <html>"
 
+    def test_lang_attribute(self):
+        html = _read("base.html")
+        assert 'lang="en"' in html or "lang=" in html
+
     def test_skip_link_present(self):
         html = _read("base.html")
         assert 'href="#main-content"' in html, "skip link must target #main-content"
+        assert "skip-link" in html
+        assert "#main-content" in html
         # Skip link must appear before the main content block
         skip_pos = html.index('href="#main-content"')
         block_pos = html.index("{% block content %}")
@@ -34,6 +47,26 @@ class TestBaseTemplate:
     def test_skip_link_class(self):
         html = _read("base.html")
         assert 'class="skip-link"' in html, "skip link must carry .skip-link class"
+
+    def test_theme_toggle_has_aria_label(self):
+        html = _read("base.html")
+        assert 'aria-label="Toggle theme"' in html
+
+    def test_fouc_prevention_script(self):
+        html = _read("base.html")
+        head_match = re.search(r"<head>(.*?)</head>", html, re.DOTALL)
+        assert head_match, "No <head> section found"
+        head = head_match.group(1)
+        assert "alcove-theme" in head, "FOUC prevention script missing from <head>"
+        stylesheet_pos = head.find("style.css")
+        script_pos = head.find("alcove-theme")
+        assert script_pos < stylesheet_pos, "FOUC script must appear before stylesheet"
+
+    def test_theme_toggle_three_states(self):
+        html = _read("base.html")
+        assert "'auto'" in html
+        assert "'light'" in html
+        assert "'dark'" in html
 
 
 class TestSearchTemplate:
@@ -110,3 +143,26 @@ class TestResultsTemplate:
             "result cards must use aria-describedby to reference metadata"
         assert "card-meta-" in html, \
             "card metadata IDs must follow the card-meta-N pattern"
+
+
+class TestStylesheet:
+    """Tests against style.css for theme and contrast requirements."""
+
+    def setup_method(self):
+        self.css = _read_path(STATIC_DIR / "style.css")
+
+    def test_theme_toggle_styles_exist(self):
+        assert ".theme-toggle" in self.css
+
+    def test_light_theme_exists(self):
+        assert '[data-theme="light"]' in self.css
+
+    def test_dark_theme_exists(self):
+        assert '[data-theme="dark"]' in self.css
+
+    def test_auto_theme_media_query(self):
+        assert "prefers-color-scheme: light" in self.css
+        assert ":root:not([data-theme])" in self.css
+
+    def test_amber_badge_variable(self):
+        assert "--amber-badge" in self.css

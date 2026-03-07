@@ -4,9 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Alcove</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem('alcove-theme');
+      if (t) document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+    <span id="theme-icon">🌙</span>
+  </button>
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="container">
     <header>
@@ -17,8 +26,39 @@
     {% block content %}{% endblock %}
 
     <footer>
-      <p>Local-first retrieval &mdash; your data never leaves your disk.</p>
+      <p>Local-first retrieval. Your data never leaves your disk.</p>
     </footer>
   </div>
+  <script>
+    (function() {
+      var btn = document.getElementById('theme-toggle');
+      var icon = document.getElementById('theme-icon');
+      var states = ['auto', 'light', 'dark'];
+      var icons = {'auto': '⚙️', 'light': '☀️', 'dark': '🌙'};
+
+      function getCurrent() {
+        return localStorage.getItem('alcove-theme') || 'auto';
+      }
+
+      function apply(theme) {
+        if (theme === 'auto') {
+          delete document.documentElement.dataset.theme;
+          localStorage.removeItem('alcove-theme');
+        } else {
+          document.documentElement.dataset.theme = theme;
+          localStorage.setItem('alcove-theme', theme);
+        }
+        icon.textContent = icons[theme];
+      }
+
+      apply(getCurrent());
+
+      btn.addEventListener('click', function() {
+        var cur = getCurrent();
+        var next = states[(states.indexOf(cur) + 1) % states.length];
+        apply(next);
+      });
+    })();
+  </script>
 </body>
 </html>

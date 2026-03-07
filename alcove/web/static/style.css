@@ -9,11 +9,62 @@
   --cyan: #79c0ff;
   --yellow: #e3b341;
   --white: #f0f6fc;
-  --muted: #8b949e;
+  --muted: #97a0aa;
   --amber: #d2a56e;
+  --amber-badge: #ebbe87;
   --amber-glow: #d2a56e40;
   --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg-body: #f5f0eb;
+    --bg-card: #ffffff;
+    --border-card: #d4cfc9;
+    --text: #2d2a26;
+    --green: #1a7f2b;
+    --cyan: #0969da;
+    --yellow: #9a6700;
+    --white: #1a1a2e;
+    --muted: #636058;
+    --amber: #896512;
+    --amber-badge: #7a5c10;
+    --amber-glow: #d2a56e30;
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-body: #1a1a2e;
+  --bg-card: #0d1117;
+  --border-card: #30363d;
+  --text: #c9d1d9;
+  --green: #7ee787;
+  --cyan: #79c0ff;
+  --yellow: #e3b341;
+  --white: #f0f6fc;
+  --muted: #97a0aa;
+  --amber: #d2a56e;
+  --amber-badge: #ebbe87;
+  --amber-glow: #d2a56e40;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-body: #f5f0eb;
+  --bg-card: #ffffff;
+  --border-card: #d4cfc9;
+  --text: #2d2a26;
+  --green: #1a7f2b;
+  --cyan: #0969da;
+  --yellow: #9a6700;
+  --white: #1a1a2e;
+  --muted: #636058;
+  --amber: #896512;
+  --amber-badge: #7a5c10;
+  --amber-glow: #d2a56e30;
 }
 
 *, *::before, *::after {
@@ -87,6 +138,32 @@ a:focus-visible {
 
 .skip-link:focus {
   top: 0;
+}
+
+/* ---- Theme Toggle ---- */
+
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: var(--amber);
+  z-index: 50;
+  padding: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--amber);
 }
 
 /* ---- Header ---- */
@@ -278,7 +355,7 @@ button:focus-visible {
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
   background: var(--amber-glow);
-  color: var(--amber);
+  color: var(--amber-badge);
   border: 1px solid var(--amber);
   vertical-align: middle;
   margin-left: 0.5rem;
