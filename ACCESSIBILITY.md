@@ -20,17 +20,17 @@ All foreground/background color pairs have been audited against WCAG AA requirem
 
 | Foreground | Background | Ratio | Status |
 |-----------|-----------|-------|-------|
-| text (#c9d1d9) | bg-body (#1a1a2e) | 9.73:1 | Pass |
-| text (#c9d1d9) | bg-card (#0d1117) | 12.21:1 | Pass |
-| muted (#97a0aa) | bg-body (#1a1a2e) | 6.51:1 | Pass |
-| muted (#97a0aa) | bg-card (#0d1117) | 8.17:1 | Pass |
-| amber (#d2a56e) | bg-body (#1a1a2e) | 5.95:1 | Pass |
-| amber (#d2a56e) | bg-card (#0d1117) | 7.47:1 | Pass |
-| cyan (#79c0ff) | bg-card (#0d1117) | 8.19:1 | Pass |
-| green (#7ee787) | bg-card (#0d1117) | 10.04:1 | Pass |
-| amber-badge (#ebbe87) | amber-glow (#d2a56e40) | 5.23:1 | Pass |
+| text `#c9d1d9` | bg-body `#1a1a2e` | 9.73:1 | Pass |
+| text `#c9d1d9` | bg-card `#0d1117` | 12.21:1 | Pass |
+| muted `#97a0aa` | bg-body `#1a1a2e` | 6.51:1 | Pass |
+| muted `#97a0aa` | bg-card `#0d1117` | 8.17:1 | Pass |
+| amber `#d2a56e` | bg-body `#1a1a2e` | 5.95:1 | Pass |
+| amber `#d2a56e` | bg-card `#0d1117` | 7.47:1 | Pass |
+| cyan `#79c0ff` | bg-card `#0d1117` | 8.19:1 | Pass |
+| green `#7ee787` | bg-card `#0d1117` | 10.04:1 | Pass |
+| amber-badge `#ebbe87` | amber-glow `#d2a56e40` | 5.23:1 | Pass |
 
-**Light theme** uses adjusted values (#896512 amber, #636058 muted, #2d2a26 text on #f5f0eb / #ffffff backgrounds) that also meet WCAG AA.
+**Light theme** uses adjusted values (`#896512` amber, `#636058` muted, `#2d2a26` text on `#f5f0eb` / `#ffffff` backgrounds) that also meet WCAG AA.
 
 ## Keyboard Navigation
 
