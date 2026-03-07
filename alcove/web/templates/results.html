@@ -1,29 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main id="main-content">
-  <h2 class="results-heading">Results for: {{ query | e }}</h2>
-
   {% if results %}
+  <div class="results-header">
+    <span class="results-count">{{ results | length }} result{% if results | length != 1 %}s{% endif %} for</span>
+    <span class="results-query">&ldquo;{{ query | e }}&rdquo;</span>
+  </div>
+
   <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
     {% for r in results %}
     {% set _fname = r.source.split('/')|last %}
     {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
+    {% set score_pct = (r.score * 100) | round | int %}
     {% set card_id = "card-meta-" ~ loop.index %}
     <div class="result-card" aria-describedby="{{ card_id }}">
       <div class="result-meta" id="{{ card_id }}">
-        <span class="result-source">{{ r.source | e }}</span>
-        <span class="file-badge">{{ ext }}</span>
-        <span class="result-score">{{ "%.3f" | format(r.score) }}</span>
+        <div class="result-file-info">
+          <div class="file-type-icon" aria-label="{{ ext }} file" title="{{ ext }}">{{ ext }}</div>
+          <span class="result-filename" title="{{ r.source | e }}">{{ _fname | e }}</span>
+        </div>
+        <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
+          <span class="score-label">Score</span>
+          <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
+          </div>
+          <span class="score-value">{{ "%.3f" | format(r.score) }}</span>
+        </div>
       </div>
       <div class="result-chunk">{{ r.text | safe }}</div>
     </div>
     {% endfor %}
   </div>
+
   {% else %}
-  <p class="no-results">No results found for '{{ query | e }}'</p>
+  <div class="no-results" role="status">
+    <div class="no-results-icon" aria-hidden="true">&#128269;</div>
+    <p class="no-results-heading">No results found</p>
+    <p class="no-results-sub">
+      No documents matched &ldquo;{{ query | e }}&rdquo;. Try different search terms or upload more documents.
+    </p>
+  </div>
   {% endif %}
 
-  <a class="back-link" href="/">&larr; Back to search</a>
-</main>
+  <a class="back-link" href="/">&#8592; Back to search</a>
 {% endblock %}

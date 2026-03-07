@@ -10,31 +10,52 @@
       if (t) document.documentElement.dataset.theme = t;
     })();
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-    <span id="theme-icon">🌙</span>
-  </button>
   <a href="#main-content" class="skip-link">Skip to main content</a>
-  <div class="container">
-    <header>
-      <h1 class="title">Alcove</h1>
-      <p class="tagline">Your documents. Your machine. No telemetry.</p>
+
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+    <span id="theme-icon">&#9790;</span>
+  </button>
+
+  <div class="page-wrap">
+    <header class="site-header">
+      <div class="container">
+        <div class="logo-row">
+          <div class="logo-mark" aria-hidden="true">A</div>
+          <h1 class="site-title">Alcove</h1>
+        </div>
+        <p class="site-tagline">Document Search</p>
+      </div>
     </header>
 
-    {% block content %}{% endblock %}
+    <main class="site-main" id="main-content">
+      <div class="container">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
 
-    <footer>
-      <p>Local-first retrieval. Your data never leaves your disk.</p>
+    <footer class="site-footer">
+      <div class="container">
+        <p>
+          <span class="footer-dot" aria-hidden="true"></span>
+          Runs locally. No cloud. No telemetry.
+        </p>
+      </div>
     </footer>
   </div>
+
   <script>
     (function() {
       var btn = document.getElementById('theme-toggle');
       var icon = document.getElementById('theme-icon');
       var states = ['auto', 'light', 'dark'];
-      var icons = {'auto': '⚙️', 'light': '☀️', 'dark': '🌙'};
+      var icons = {'auto': '&#9881;', 'light': '&#9728;', 'dark': '&#9790;'};
+      var labels = {'auto': 'Auto theme', 'light': 'Light theme', 'dark': 'Dark theme'};
 
       function getCurrent() {
         return localStorage.getItem('alcove-theme') || 'auto';
@@ -48,7 +69,8 @@
           document.documentElement.dataset.theme = theme;
           localStorage.setItem('alcove-theme', theme);
         }
-        icon.textContent = icons[theme];
+        icon.innerHTML = icons[theme];
+        btn.setAttribute('aria-label', labels[theme]);
       }
 
       apply(getCurrent());

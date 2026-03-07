@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main id="main-content">
   {% if doc_count == 0 %}
   <div class="welcome-banner" role="status">
     <h2>Welcome to Alcove</h2>
@@ -11,31 +10,53 @@
 
   <form class="search-form" method="GET" action="/search" role="search">
     <label for="search-input" class="sr-only">Search your documents</label>
-    <input id="search-input" type="text" name="q" placeholder="Search your documents..." autofocus aria-label="Search your documents">
-    <button type="submit">Search</button>
+    <div class="search-input-wrap">
+      <span class="search-icon" aria-hidden="true">&#128269;</span>
+      <input
+        id="search-input"
+        type="text"
+        name="q"
+        placeholder="Ask anything about your documents..."
+        autofocus
+        aria-label="Search your documents">
+    </div>
+    <button type="submit" class="search-btn">Search</button>
   </form>
 
-  <div class="upload-zone"
-       id="upload-zone"
-       role="button"
-       tabindex="0"
-       aria-label="Upload files — drop files here or press Enter to browse"
-       aria-describedby="formats-note">
-    <p>Drop files here or click to browse</p>
-    <input type="file" id="file-input"
-           accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
-           aria-label="Choose files to upload"
-           multiple hidden>
+  <div
+    class="upload-zone"
+    id="upload-zone"
+    role="button"
+    tabindex="0"
+    aria-label="Upload files — drop files here or press Enter to browse"
+    aria-describedby="formats-note">
+    <span class="upload-icon" aria-hidden="true">&#8679;</span>
+    <span class="upload-label">Drop files here or click to browse</span>
+    <input
+      type="file"
+      id="file-input"
+      accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
+      aria-label="Choose files to upload"
+      multiple
+      hidden>
   </div>
-  <div class="upload-status" id="upload-status" aria-live="polite" aria-atomic="true" aria-busy="false"></div>
-  <p class="formats-note" id="formats-note">Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX</p>
-</main>
+
+  <div
+    class="upload-status"
+    id="upload-status"
+    aria-live="polite"
+    aria-atomic="true"
+    aria-busy="false"></div>
+
+  <p class="formats-note" id="formats-note">
+    Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
+  </p>
 
 <script>
 (function () {
-  const zone = document.getElementById("upload-zone");
-  const input = document.getElementById("file-input");
-  const status = document.getElementById("upload-status");
+  var zone = document.getElementById("upload-zone");
+  var input = document.getElementById("file-input");
+  var status = document.getElementById("upload-status");
 
   zone.addEventListener("click", function () {
     input.click();
@@ -93,7 +114,7 @@
         var skipped = [];
         for (var j = 0; j < data.length; j++) {
           if (data[j].status === "skipped") {
-            skipped.push(data[j].filename + " (skipped — " + data[j].reason + ")");
+            skipped.push(data[j].filename + " (skipped: " + data[j].reason + ")");
           } else {
             indexed.push(data[j].filename + " \u2014 " + data[j].chunks + " chunks");
           }
