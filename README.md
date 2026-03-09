@@ -14,7 +14,7 @@ Alcove is local-first search for your documents. Point it at a directory. It chu
 
 PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. The same pipeline indexes a personal research library, a community archive, or a municipal records collection.
 
-**[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
+**[Landing page](https://pro777.github.io/alcove/)** · **[30-second demo](https://pro777.github.io/alcove/demo.html)**
 
 ## Quick start
 
