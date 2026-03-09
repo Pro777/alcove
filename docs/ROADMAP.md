@@ -2,7 +2,7 @@
 
 ## Current release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system. 
+Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system.
 
 A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
 
@@ -12,11 +12,11 @@ This is the foundation. Everything below builds on it.
 
 **More formats.** RTF, ODT, PPTX, XLSX. The extractor plugin API already supports this; the work is writing and testing each one.
 
-**Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default. The hash embedder stays available for airgapped and CI environments.
+**Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available -- it is not a stepping stone, it is a permanent option for people who want deterministic, inspectable results.
 
 **Browse mode.** Alcove should be navigable, not just searchable. Directory-aware corpus browsing in the web UI: see what you have, not just what matches a query. Search and browse are complementary interfaces to the same index.
 
-**MCP endpoint.** An agent-facing query surface so language models and tools can retrieve from your index directly. Alcove already runs a local API; exposing it as an MCP-compatible tool server is a natural extension. Context7 compatibility is a goal.
+**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface that lets Claude, ChatGPT, a public-facing website, or any other tool query your index. Your corpus stays local. Your index stays yours. But the answers are available to whoever you choose to expose them to -- and because Alcove is retrieval, not generation, those answers are what your documents actually say. No hallucinations, no editorializing, no slop. Alcove already runs a local API; exposing it as an MCP tool server is a natural extension. Context7 compatibility is a goal.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 

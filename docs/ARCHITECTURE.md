@@ -1,9 +1,9 @@
 # Architecture
 
-The README describes three stages: ingest, index, query. They are independent modules that operate over local files only. Each stage reads from disk, writes to disk, and knows nothing about the others. You can re-run any stage without touching the rest.
+Three stages: ingest, index, query. They are independent modules that operate over local files only. Each stage reads from disk, writes to disk, and knows nothing about the others. You can re-run any stage without touching the rest.
 
 ```
-data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query responses
+data/raw/*  ->  data/processed/chunks.jsonl  ->  vector store  ->  query responses
 ```
 
 ## Ingest
@@ -36,10 +36,12 @@ data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query resp
 
 ## Embedders
 
-| Name | Env value | Description |
-|------|-----------|-------------|
-| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash. Offline, zero download. Useful for smoke tests and CI. |
-| Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model, downloaded on first use) |
+The two embedders are not a feature tier. They are a trust decision.
+
+| Name | Env value | What it means |
+|------|-----------|---------------|
+| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256. Zero ML, zero model downloads, zero network. Every output is a pure function of the input. For operators who do not want machine learning in their pipeline at all. Also useful for CI and airgapped environments. |
+| Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model, downloaded on first use, then fully local). For operators who want vector similarity without cloud dependency. This is retrieval, not generation. |
 
 Set the embedder with the `EMBEDDER` environment variable. Custom embedders can be installed as plugins.
 
@@ -75,11 +77,11 @@ Plugins are merged with builtins at startup. When a plugin and a builtin share t
 
 The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. Telemetry is disabled, including ChromaDB's upstream telemetry.
 
-This boundary is structural, not configurable. There is no flag to turn it off.
+This boundary is structural, not configurable. There is no flag to turn it off because there is nothing to turn off.
 
 ## Tradeoffs
 
-The hash embedder ships as the default because it requires zero downloads and works offline. The cost is that it produces deterministic but non-semantic vectors; swap to `sentence-transformers` for real search quality.
+The hash embedder ships as the default because it requires zero downloads, works offline, and imposes no ML dependency on operators who did not ask for one. The cost is that it produces deterministic but non-semantic vectors; swap to `sentence-transformers` for real search quality.
 
 ChromaDB is the default backend for broad compatibility and ecosystem support. zvec is available for deployments where a lighter footprint matters more than ChromaDB's feature set.
 
