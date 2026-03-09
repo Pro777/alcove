@@ -2,7 +2,9 @@
 
 ## Current release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system. A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
+Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system. 
+
+A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
 
 This is the foundation. Everything below builds on it.
 
