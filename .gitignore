@@ -3,6 +3,8 @@
 .pytest_cache/
 __pycache__/
 *.pyc
+.coverage
+coverage.xml
 data/chroma/*
 !data/chroma/.gitkeep
 data/zvec/

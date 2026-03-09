@@ -24,13 +24,25 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e ".[dev,zvec]"
 
       - name: Set up environment
         run: |
           cp .env.example .env
           mkdir -p data/raw data/processed data/chroma
 
-      - name: Run tests
-        run: python -m pytest -q
+      - name: Run tests with coverage
+        run: |
+          python -m pip install coverage
+          python -m coverage run --source=alcove -m pytest -q
+          python -m coverage xml -o coverage.xml
+          python -m coverage report
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: false
 
