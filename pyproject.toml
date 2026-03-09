@@ -34,6 +34,10 @@ semantic = ["sentence-transformers>=3.0"]
 epub = ["ebooklib>=0.18,<1.0"]
 zvec = ["zvec>=0.1"]
 
+[project.urls]
+Homepage = "https://pro777.github.io/alcove/"
+Repository = "https://github.com/Pro777/alcove"
+
 [project.scripts]
 alcove = "alcove.cli:main"
 
