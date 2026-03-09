@@ -58,6 +58,8 @@ data/raw/*  →  chunks.jsonl  →  vector store  →  search results
 
 **Query** retrieves results through the CLI or a built-in web interface with file upload.
 
+Three search modes: semantic (vector similarity), keyword (BM25), and hybrid (both). Results can be scoped to named collections.
+
 Custom extractors, embedders, and vector backends plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API.
 
 ## Trust model
