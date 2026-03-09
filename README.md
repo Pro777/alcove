@@ -43,7 +43,15 @@ alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
 
-<img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
+<p>
+  <a href="docs/assets/web-ui-dark.png">
+    <img src="docs/assets/web-ui-dark.png" alt="Alcove UI — dark theme" width="420">
+  </a>
+  &nbsp;
+  <a href="docs/assets/web-ui-light.png">
+    <img src="docs/assets/web-ui-light.png" alt="Alcove UI — light theme" width="420">
+  </a>
+</p>
 
 ## How it works
 
