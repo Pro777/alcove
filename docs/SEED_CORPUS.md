@@ -4,32 +4,29 @@ Alcove includes a small runtime-fetched seed corpus for deterministic demos. All
 
 ## Why these sources
 
-- Legally clear: public-domain texts only
-- Tangible: recognizable, human-readable content for immediate search demos
-- Small footprint: no large binaries committed
-- Reproducible: source URL plus SHA-256 manifest validation
+Legally clear: public-domain texts only. Tangible: recognizable, human-readable content for immediate search demos. Small footprint: no large binaries committed to the repository. Reproducible: each file is validated against a SHA-256 manifest.
 
 ## Included sources
 
 1. **Alice's Adventures in Wonderland** (Project Gutenberg #11)
    - URL: `https://www.gutenberg.org/files/11/11-0.txt`
-   - Public domain status: Project Gutenberg public-domain text in the U.S.
+   - Public domain in the U.S.
 
 2. **Frankenstein; Or, The Modern Prometheus** (Project Gutenberg #84)
    - URL: `https://www.gutenberg.org/files/84/84-0.txt`
-   - Public domain status: Project Gutenberg public-domain text in the U.S.
+   - Public domain in the U.S.
 
 3. **The Federalist Papers** (Project Gutenberg #1404)
    - URL: `https://www.gutenberg.org/files/1404/1404-0.txt`
-   - Public domain status: historical U.S. government-era text; public domain in U.S.
+   - Public domain in the U.S.
 
-4. **Declaration of Independence (Transcript)** (U.S. National Archives)
+4. **Declaration of Independence** (U.S. National Archives)
    - URL: `https://www.archives.gov/founding-docs/declaration-transcript`
-   - Public domain status: U.S. federal government work (public domain)
+   - U.S. federal government work; public domain.
 
-5. **U.S. Constitution (Transcript)** (U.S. National Archives)
+5. **U.S. Constitution** (U.S. National Archives)
    - URL: `https://www.archives.gov/founding-docs/constitution-transcript`
-   - Public domain status: U.S. federal government work (public domain)
+   - U.S. federal government work; public domain.
 
 ## Reproducibility
 
@@ -37,4 +34,4 @@ Alcove includes a small runtime-fetched seed corpus for deterministic demos. All
 python3 scripts/fetch_seed_corpus.py
 ```
 
-Downloads files into `data/raw/seed/` and verifies each SHA-256 from `scripts/seed_manifest.json`.
+Downloads files into `data/raw/seed/` and verifies each against the SHA-256 checksums in `scripts/seed_manifest.json`. If a checksum fails, the script exits with a non-zero status.

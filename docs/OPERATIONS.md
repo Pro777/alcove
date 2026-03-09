@@ -10,7 +10,7 @@ alcove serve              # open http://localhost:8000
 
 ## Enabling semantic search
 
-By default, Alcove uses a deterministic hash embedder (offline, zero download). For semantic search with real embeddings:
+By default, Alcove uses a deterministic hash embedder (offline, zero download). For real semantic search:
 
 ```bash
 pip install alcove-search[semantic]
@@ -27,7 +27,7 @@ alcove ingest /path/to/your/files
 alcove serve
 ```
 
-Alternatively, use the web UI to upload files at `http://localhost:8000`.
+Files can also be uploaded through the web UI at `http://localhost:8000`.
 
 ## Web UI and API
 
@@ -37,7 +37,7 @@ alcove serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Web UI (search, file upload) |
+| `/` | GET | Web UI (search and file upload) |
 | `/query` | POST | `{ "query": "...", "k": 3 }` |
 | `/ingest` | POST | File upload (multipart) |
 | `/health` | GET | Readiness check |
@@ -46,8 +46,8 @@ alcove serve
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDER` | `hash` | Embedder to use: `hash` or `sentence-transformers` |
-| `VECTOR_BACKEND` | `chromadb` | Vector store: `chromadb` or `zvec` |
+| `EMBEDDER` | `hash` | Embedder to use (`hash` or `sentence-transformers`) |
+| `VECTOR_BACKEND` | `chromadb` | Vector store (`chromadb` or `zvec`) |
 | `CHROMA_PATH` | `./data/chroma` | ChromaDB persistence directory |
 | `CHROMA_COLLECTION` | `alcove_docs` | Collection name |
 | `CHUNK_SIZE` | `1000` | Characters per chunk |
@@ -60,9 +60,11 @@ alcove serve
 docker compose up -d --build
 ```
 
+The container exposes port 8000 and includes a `/health` endpoint for readiness checks.
+
 ## Backup
 
-Back up the following directories: `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend).
+Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend). These directories contain everything Alcove needs to reconstruct the index.
 
 ## Running tests
 
