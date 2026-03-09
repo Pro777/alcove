@@ -18,6 +18,9 @@
         <div class="result-file-info">
           <div class="file-type-icon" aria-label="{{ ext }} file" title="{{ ext }}">{{ ext }}</div>
           <span class="result-filename" title="{{ r.source | e }}">{{ _fname | e }}</span>
+          {% if r.collection %}
+          <span class="collection-badge" title="Collection: {{ r.collection | e }}">{{ r.collection | e }}</span>
+          {% endif %}
         </div>
         <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
           <span class="score-label">Score</span>

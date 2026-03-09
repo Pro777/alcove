@@ -20,15 +20,37 @@
         autofocus
         aria-label="Search your documents">
     </div>
+    <input type="hidden" id="collections-hidden" name="collections" value="">
+
+    <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
+      <label class="mode-option">
+        <input type="radio" name="mode" value="semantic" checked>
+        <span class="mode-label">Semantic</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="keyword">
+        <span class="mode-label">Keyword</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="hybrid">
+        <span class="mode-label">Hybrid</span>
+      </label>
+    </fieldset>
+
     <button type="submit" class="search-btn">Search</button>
   </form>
+
+  <div class="collections-filter" id="collections-filter" role="group" aria-label="Filter by collection" style="display:none;">
+    <span class="collections-label">Collections:</span>
+    <div class="collections-checkboxes" id="collections-checkboxes"></div>
+  </div>
 
   <div
     class="upload-zone"
     id="upload-zone"
     role="button"
     tabindex="0"
-    aria-label="Upload files — drop files here or press Enter to browse"
+    aria-label="Upload files: drop files here or press Enter to browse"
     aria-describedby="formats-note">
     <span class="upload-icon" aria-hidden="true">&#8679;</span>
     <span class="upload-label">Drop files here or click to browse</span>
@@ -51,6 +73,71 @@
   <p class="formats-note" id="formats-note">
     Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
   </p>
+
+<style>
+  .search-mode-selector {
+    border: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+  .mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #999);
+  }
+  .mode-option input[type="radio"] {
+    accent-color: var(--accent, #7c6cff);
+    margin: 0;
+  }
+  .mode-option input[type="radio"]:checked + .mode-label {
+    color: var(--text-primary, #fff);
+    font-weight: 500;
+  }
+  .mode-label {
+    transition: color 0.15s ease;
+  }
+</style>
+
+<script>
+(function () {
+  fetch("/collections")
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.length) return;
+      var wrap = document.getElementById("collections-filter");
+      var box = document.getElementById("collections-checkboxes");
+      var hidden = document.getElementById("collections-hidden");
+      wrap.style.display = "";
+      for (var i = 0; i < data.length; i++) {
+        var c = data[i];
+        var label = document.createElement("label");
+        label.className = "collection-chip";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = c.name;
+        cb.className = "collection-cb";
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
+        box.appendChild(label);
+      }
+      // On form submit, gather checked collections into the hidden field
+      var form = document.querySelector(".search-form");
+      form.addEventListener("submit", function () {
+        var checked = box.querySelectorAll("input:checked");
+        var vals = [];
+        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+        hidden.value = vals.join(",");
+      });
+    })
+    .catch(function () { /* silently ignore if collections endpoint fails */ });
+})();
+</script>
 
 <script>
 (function () {
@@ -116,7 +203,7 @@
           if (data[j].status === "skipped") {
             skipped.push(data[j].filename + " (skipped: " + data[j].reason + ")");
           } else {
-            indexed.push(data[j].filename + " \u2014 " + data[j].chunks + " chunks");
+            indexed.push(data[j].filename + " - " + data[j].chunks + " chunks");
           }
         }
         var msg = "";

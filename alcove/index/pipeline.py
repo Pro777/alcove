@@ -8,7 +8,7 @@ from .backend import get_backend
 from .embedder import get_embedder
 
 
-def run(chunks_file: str | None = None) -> int:
+def run(chunks_file: str | None = None, collection: str = "default") -> int:
     chunks_file = chunks_file or os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
 
     embedder = get_embedder()
@@ -20,7 +20,7 @@ def run(chunks_file: str | None = None) -> int:
             rec = json.loads(line)
             ids.append(rec["id"])
             docs.append(rec["chunk"])
-            metas.append({"source": rec["source"]})
+            metas.append({"source": rec["source"], "collection": collection})
 
     if not ids:
         return 0
