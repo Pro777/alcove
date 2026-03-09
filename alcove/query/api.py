@@ -58,9 +58,17 @@ def root(request: Request):
 
 @app.get("/search", response_class=HTMLResponse)
 def search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
+    _COLL_RE = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
     coll_list: Optional[List[str]] = None
     if collections.strip():
-        coll_list = [c.strip() for c in collections.split(",") if c.strip()]
+        tokens = [c.strip() for c in collections.split(",") if c.strip()]
+        invalid = [t for t in tokens if not _COLL_RE.match(t)]
+        if invalid:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": f"Invalid collection name(s): {invalid}"},
+            )
+        coll_list = tokens
     results: list = []
     if q.strip():
         raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
@@ -92,7 +100,12 @@ def query(inp: QueryIn):
 @app.post("/ingest")
 async def ingest(
     files: list[UploadFile] = File(...),
-    collection: str = Query("default", description="Target collection name"),
+    collection: str = Query(
+        "default",
+        max_length=128,
+        pattern=r"^[a-zA-Z0-9_\-\.]+$",
+        description="Target collection name",
+    ),
 ):
     raw_dir = os.getenv("RAW_DIR", "data/raw")
     chunks_file = os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")

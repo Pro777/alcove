@@ -18,19 +18,31 @@ PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all 
 ## Quick start
 
 ```bash
-pip install alcove-search           # Python 3.10+
-alcove seed-demo                    # download a public-domain corpus and build the index
-alcove serve                        # open http://localhost:8000
+pip install alcove-search[semantic]
+```
+
+This is the recommended install. It includes [sentence-transformers](https://www.sbert.net/) for real vector similarity search (~80 MB model download on first use).
+
+**Why is semantic search a separate extra?** The `sentence-transformers` library depends on PyTorch, which adds ~2 GB to the install. The base package uses a lightweight hash-based embedder that works for development and CI but does not produce meaningful search results. If you are evaluating alcove for actual document search, use the `[semantic]` extra.
+
+<details>
+<summary>All extras</summary>
+
+| Extra | Install command | What it adds |
+|-------|----------------|--------------|
+| Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers |
+| EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
+| DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
+| Everything | `pip install alcove-search[semantic,epub,docx]` | All of the above |
+
+</details>
+
+```bash
+alcove seed-demo          # download sample corpus + build index
+alcove serve              # open http://localhost:8000
 ```
 
 <img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
-
-For semantic vector search, add the optional extra:
-
-```bash
-pip install alcove-search[semantic]    # sentence-transformers (~80 MB model, first run only)
-pip install alcove-search[epub,docx]   # additional format support
-```
 
 ## How it works
 
