@@ -1,6 +1,6 @@
-# ⚙️ Operations
+# Operations
 
-## 🚀 First run
+## First run
 
 ```bash
 pip install alcove-search
@@ -8,7 +8,7 @@ alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
 
-## 🧠 Enabling semantic search
+## Enabling semantic search
 
 By default, Alcove uses a deterministic hash embedder (offline, zero download). For real semantic search:
 
@@ -18,18 +18,18 @@ EMBEDDER=sentence-transformers alcove seed-demo
 EMBEDDER=sentence-transformers alcove serve
 ```
 
-This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally — subsequent runs are offline.
+This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally; subsequent runs are offline.
 
-## 📂 Custom documents
+## Custom documents
 
 ```bash
 alcove ingest /path/to/your/files
 alcove serve
 ```
 
-Or use the web UI to upload files directly at `http://localhost:8000`.
+Files can also be uploaded through the web UI at `http://localhost:8000`.
 
-## 🌐 Web UI + API
+## Web UI and API
 
 ```bash
 alcove serve
@@ -37,12 +37,12 @@ alcove serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Web UI (search + file upload) |
+| `/` | GET | Web UI (search and file upload) |
 | `/query` | POST | `{ "query": "...", "k": 3 }` |
 | `/ingest` | POST | File upload (multipart) |
 | `/health` | GET | Readiness check |
 
-## 🔧 Environment variables
+## Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -54,17 +54,19 @@ alcove serve
 | `CHUNK_OVERLAP` | `150` | Overlap between chunks |
 | `RAW_DIR` | `data/raw` | Input directory for ingestion |
 
-## 🐳 Docker (optional)
+## Docker
 
 ```bash
 docker compose up -d --build
 ```
 
-## 💾 Backup
+The container exposes port 8000 and includes a `/health` endpoint for readiness checks.
 
-Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend).
+## Backup
 
-## 🧪 Running tests
+Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend). These directories contain everything Alcove needs to reconstruct the index.
+
+## Running tests
 
 ```bash
 pip install alcove-search[dev]

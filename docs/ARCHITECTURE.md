@@ -1,45 +1,49 @@
-# 🏗️ Architecture
+# Architecture
 
-## Pipeline (local-only default)
-
-1. **📥 Ingest** — `alcove/ingest` discovers files in `data/raw/**` and extracts text using format-specific extractors, then chunks into JSONL.
-
-2. **📊 Index** — `alcove/index` reads chunks and writes embeddings + metadata to a local vector store (ChromaDB by default).
-
-3. **🔍 Query** — `alcove/query` retrieves results via CLI or a built-in FastAPI web service.
-
-## Data flow
+The README describes three stages: ingest, index, query. They are independent modules that operate over local files only. Each stage reads from disk, writes to disk, and knows nothing about the others. You can re-run any stage without touching the rest.
 
 ```
 data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query responses
 ```
 
-## 📄 Supported formats
+## Ingest
+
+`alcove/ingest` discovers files in `data/raw/**` and extracts text using format-specific extractors, then chunks the output into JSONL.
+
+## Index
+
+`alcove/index` reads chunks and writes embeddings plus metadata to a local vector store. ChromaDB is the default. zvec is the alternative.
+
+## Query
+
+`alcove/query` retrieves results via the CLI or a built-in FastAPI web service with file upload.
+
+## Supported formats
 
 | Format | Extension | Dependency |
 |--------|-----------|------------|
-| Plain text | `.txt` | — |
+| Plain text | `.txt` | none |
 | PDF | `.pdf` | pypdf |
 | EPUB | `.epub` | ebooklib (optional) |
 | HTML | `.html`, `.htm` | beautifulsoup4 |
-| Markdown | `.md` | — |
-| reStructuredText | `.rst` | — |
-| CSV | `.csv` | — |
-| TSV | `.tsv` | — |
-| JSON | `.json` | — |
-| JSONL | `.jsonl` | — |
+| Markdown | `.md` | none |
+| reStructuredText | `.rst` | none |
+| CSV | `.csv` | none |
+| TSV | `.tsv` | none |
+| JSON | `.json` | none |
+| JSONL | `.jsonl` | none |
 | DOCX | `.docx` | python-docx (optional) |
 
-## 🧠 Embedders
+## Embedders
 
 | Name | Env value | Description |
 |------|-----------|-------------|
-| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash — offline, zero download, good for smoke tests |
-| Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model downloaded on first use) |
+| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash. Offline, zero download. Useful for smoke tests and CI. |
+| Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model, downloaded on first use) |
 
-Set the embedder with the `EMBEDDER` environment variable. Third-party embedders can be installed as plugins (see below).
+Set the embedder with the `EMBEDDER` environment variable. Custom embedders can be installed as plugins.
 
-## 💾 Vector backends
+## Vector backends
 
 | Name | Env value | Dependency |
 |------|-----------|------------|
@@ -48,9 +52,9 @@ Set the embedder with the `EMBEDDER` environment variable. Third-party embedders
 
 Set the backend with the `VECTOR_BACKEND` environment variable.
 
-## 🔌 Plugin system
+## Plugin system
 
-Alcove discovers plugins via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups are available:
+Custom extractors, embedders, and vector backends plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups:
 
 | Group | Purpose | Example entry point |
 |-------|---------|---------------------|
@@ -65,16 +69,18 @@ To create a plugin, add an `[project.entry-points]` section in your package's `p
 rtf = "my_plugin:extract_rtf"
 ```
 
-Plugins are merged with builtins at runtime. Plugin extractors and backends take precedence over builtins with the same name.
+Plugins are merged with builtins at startup. When a plugin and a builtin share the same name, the plugin wins.
 
-## 🛡️ Boundary
+## Boundary
 
-- Operator owns host + storage
-- No default outbound network calls (sentence-transformers downloads a model on first use only)
-- Telemetry disabled by default
+The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. Telemetry is disabled, including ChromaDB's upstream telemetry.
 
-## ⚖️ Tradeoffs
+This boundary is structural, not configurable. There is no flag to turn it off.
 
-- Hash embedder ships as default for zero-download offline use — swap to sentence-transformers for real semantic quality
-- Thin implementation for speed-to-demo
-- ChromaDB for broad compatibility; zvec for lighter footprint
+## Tradeoffs
+
+The hash embedder ships as the default because it requires zero downloads and works offline. The cost is that it produces deterministic but non-semantic vectors; swap to `sentence-transformers` for real search quality.
+
+ChromaDB is the default backend for broad compatibility and ecosystem support. zvec is available for deployments where a lighter footprint matters more than ChromaDB's feature set.
+
+The implementation is deliberately thin. The goal at v0.3.0 is a correct, working pipeline, not an optimized one. Performance work comes after the architecture is proven.

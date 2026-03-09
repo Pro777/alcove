@@ -9,59 +9,63 @@
 
 **Index your world. Share it with the universe.**
 
-**Alcove** is a local-first document search library. Install it, point it at your files, and search. No server, no sign-up, no data leaves your disk.
+Alcove is local-first search for your documents. Point it at a directory. It chunks, embeds, and indexes everything locally. You search. Nothing leaves your machine.
 
-> **[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
+PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. The same pipeline indexes a personal research library, a community archive, or a municipal records collection.
 
-## ✨ Features
+**[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
 
-- **🔒 Private** — documents stay on your machine, no cloud calls, no telemetry
-- **⚡ Zero config** — `pip install`, two commands, searching in under a minute
-- **🔌 Extensible** — custom extractors, embedders, and vector backends
-- **📄 Multi-format** — PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, TXT
-- **🌐 Web UI** — upload and search from your browser
-
-## 📦 Installation
-
-**Requirements:** Python 3.10+ · Linux, macOS, or Windows
+## Quick start
 
 ```bash
-pip install alcove-search
-```
-
-**Optional extras:**
-
-| Extra | Install command | What it adds |
-|-------|----------------|--------------|
-| Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers (~80 MB model download on first use) |
-| EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
-| DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
-
-## ⚡ Quick Start
-
-```bash
-alcove seed-demo          # download sample corpus + build index
-alcove serve              # open http://localhost:8000
+pip install alcove-search           # Python 3.10+
+alcove seed-demo                    # download a public-domain corpus and build the index
+alcove serve                        # open http://localhost:8000
 ```
 
 <img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
 
-## 🔒 Trust Model
+For semantic vector search, add the optional extra:
 
-- Local disk only — no hosted control plane
-- No telemetry. Period. (ChromaDB's upstream telemetry is also disabled.)
-- You choose what enters your index
-- **We do not want your data**
+```bash
+pip install alcove-search[semantic]    # sentence-transformers (~80 MB model, first run only)
+pip install alcove-search[epub,docx]   # additional format support
+```
 
-## 📚 Documentation
+## How it works
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Operations](docs/OPERATIONS.md)
-- [Security](docs/SECURITY.md)
-- [Seed Corpus](docs/SEED_CORPUS.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Accessibility](ACCESSIBILITY.md)
+Three stages: ingest, index, query. Each is independent and pluggable.
 
-## 📄 License
+```
+data/raw/*  →  chunks.jsonl  →  vector store  →  search results
+```
+
+**Ingest** discovers files recursively and extracts text with format-specific extractors.
+
+**Index** embeds the chunks and writes them to a local vector store (ChromaDB by default; zvec as an alternative).
+
+**Query** retrieves results through the CLI or a built-in web interface with file upload.
+
+Custom extractors, embedders, and vector backends plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API.
+
+## Trust model
+
+Local disk only. No outbound network calls. No telemetry. No account to create.
+
+We do not want your data.
+
+This is not a feature; it is a design constraint. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index. If you need encryption at rest, use your OS disk encryption. If you need authentication, put a reverse proxy in front of the API. Alcove handles search. You handle custody.
+
+## Where it is going
+
+v0.3.0 is a working search platform. The trajectory is broader: streaming ingest, browsable corpus navigation, an agent-facing retrieval surface, and cross-modal indexing beyond text. Eventually, federated indexes that let separate Alcove instances share a query surface without sharing raw data. That is the "share it with the universe" part.
+
+The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not become a SaaS product.
+
+## Documentation
+
+[Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) · [Security](docs/SECURITY.md) · [Seed Corpus](docs/SEED_CORPUS.md) · [Roadmap](docs/ROADMAP.md) · [Accessibility](ACCESSIBILITY.md)
+
+## License
 
 [Apache 2.0](LICENSE)
