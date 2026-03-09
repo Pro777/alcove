@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 .coverage
 coverage.xml
+junit.xml
 data/chroma/*
 !data/chroma/.gitkeep
 data/zvec/

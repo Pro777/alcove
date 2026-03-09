@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,zvec]"
+          pip install -e ".[dev]"
 
       - name: Set up environment
         run: |
@@ -34,7 +34,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           python -m pip install coverage
-          python -m coverage run --source=alcove -m pytest -q
+          python -m coverage run --source=alcove -m pytest -q --junitxml=junit.xml -o junit_family=legacy
           python -m coverage xml -o coverage.xml
           python -m coverage report
 
@@ -45,4 +45,10 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
           fail_ci_if_error: false
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
