@@ -9,82 +9,62 @@
 
 **Index your world. Share it with the universe.**
 
-Alcove is collective memory infrastructure for people who keep their data on their own disk. You point it at a directory of documents. It chunks, embeds, and indexes them locally. You search. Nothing leaves your machine.
+Alcove is local-first search for your documents. Point it at a directory. It chunks, embeds, and indexes everything locally. You search. Nothing leaves your machine.
 
-That is the whole idea. Your files are already on your computer; moving them somewhere else to make them searchable was always the odd decision. Alcove skips that step.
+PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. The same pipeline indexes a personal research library, a community archive, or a municipal records collection.
 
-> **[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
-
-## How it works
-
-Alcove runs a three-stage pipeline: ingest, index, query. Each stage is independent and pluggable.
-
-```
-data/raw/*  →  chunks.jsonl  →  vector store  →  search results
-```
-
-**Ingest** discovers files recursively and extracts text using format-specific extractors. PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. 
-
-**Index** embeds the chunks and writes them to a local vector store (ChromaDB by default; zvec as an alternative). 
-
-**Query** retrieves results through a CLI or a built-in web interface with upload support.
-
-The pipeline is fixed. The corpus is variable. That makes Alcove a platform, not a product: the same architecture indexes a personal research library, a community archive, or a municipal records collection.
+**[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
 
 ## Quick start
 
-**Requirements:** Python 3.10+
-
 ```bash
-pip install alcove-search
-alcove seed-demo          # download a public-domain corpus and build the index
-alcove serve              # open http://localhost:8000
+pip install alcove-search           # Python 3.10+
+alcove seed-demo                    # download a public-domain corpus and build the index
+alcove serve                        # open http://localhost:8000
 ```
 
 <img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
 
-For real semantic search, install the optional extras:
+For semantic vector search, add the optional extra:
 
 ```bash
 pip install alcove-search[semantic]    # sentence-transformers (~80 MB model, first run only)
 pip install alcove-search[epub,docx]   # additional format support
 ```
 
+## How it works
+
+Three stages: ingest, index, query. Each is independent and pluggable.
+
+```
+data/raw/*  →  chunks.jsonl  →  vector store  →  search results
+```
+
+**Ingest** discovers files recursively and extracts text with format-specific extractors.
+
+**Index** embeds the chunks and writes them to a local vector store (ChromaDB by default; zvec as an alternative).
+
+**Query** retrieves results through the CLI or a built-in web interface with file upload.
+
+Custom extractors, embedders, and vector backends plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API.
+
 ## Trust model
 
-Alcove stores documents and vectors on local disk only. It makes no outbound network calls. It collects no telemetry. ChromaDB's upstream telemetry is disabled by default. The web server binds to localhost.
+Local disk only. No outbound network calls. No telemetry. No account to create.
 
 We do not want your data.
 
-This is not a feature; it is a design constraint. Local-first is not something Alcove does. It is what Alcove is. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index. There is no hosted control plane. There is no account to create.
-
-If you need encryption at rest, use your operating system's disk encryption. If you need authentication, put a reverse proxy in front of the API. Alcove handles search. You handle custody.
-
-## Extending Alcove
-
-Three plugin surfaces are available via Python entry points: extractors (new file formats), embedders (new models), and backends (new vector stores). Plugins are discovered at runtime and take precedence over builtins.
-
-```bash
-alcove plugins            # list installed plugins
-alcove status             # show index + configuration
-```
-
-See [Architecture](docs/ARCHITECTURE.md) for the full plugin API.
+This is not a feature; it is a design constraint. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index. If you need encryption at rest, use your OS disk encryption. If you need authentication, put a reverse proxy in front of the API. Alcove handles search. You handle custody.
 
 ## Where it is going
 
-The current release (v0.3.0) is a working search platform. The trajectory is broader: streaming ingest, browsable corpus navigation, an agent-facing query surface, and eventually cross-modal indexing beyond text. The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
+v0.3.0 is a working search platform. The trajectory is broader: streaming ingest, browsable corpus navigation, an agent-facing retrieval surface, and cross-modal indexing beyond text. Eventually, federated indexes that let separate Alcove instances share a query surface without sharing raw data. That is the "share it with the universe" part.
 
-Alcove will not become a SaaS product.
+The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not become a SaaS product.
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Operations](docs/OPERATIONS.md)
-- [Security](docs/SECURITY.md)
-- [Seed Corpus](docs/SEED_CORPUS.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Accessibility](ACCESSIBILITY.md)
+[Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) · [Security](docs/SECURITY.md) · [Seed Corpus](docs/SEED_CORPUS.md) · [Roadmap](docs/ROADMAP.md) · [Accessibility](ACCESSIBILITY.md)
 
 ## License
 
