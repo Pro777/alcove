@@ -1,6 +1,6 @@
-# Operations
+# âš™ï¸ Operations
 
-## First run
+## ðŸš€ First run
 
 ```bash
 pip install alcove-search
@@ -8,7 +8,7 @@ alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
 
-## Enabling semantic search
+## ðŸ§  Enabling semantic search
 
 By default, Alcove uses a deterministic hash embedder (offline, zero download). For real semantic search:
 
@@ -18,18 +18,27 @@ EMBEDDER=sentence-transformers alcove seed-demo
 EMBEDDER=sentence-transformers alcove serve
 ```
 
-This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally; subsequent runs are offline.
+This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally â€” subsequent runs are offline.
 
-## Custom documents
+## ðŸ“‚ Custom documents
 
 ```bash
 alcove ingest /path/to/your/files
 alcove serve
 ```
 
-Files can also be uploaded through the web UI at `http://localhost:8000`.
+Or use the web UI to upload files directly at `http://localhost:8000`.
 
-## Web UI and API
+## Regulatory corpus pilot
+
+```bash
+alcove mirrulations-demo data/raw/mirrulations --agency EPA --collection mirrulations_docs
+alcove search "power plant emissions limits" --collection mirrulations_docs
+```
+
+See [Mirrulations Corpus](MIRRULATIONS_CORPUS.md) for the recommended text-only subset and sync pattern.
+
+## ðŸŒ Web UI + API
 
 ```bash
 alcove serve
@@ -37,12 +46,12 @@ alcove serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Web UI (search and file upload) |
+| `/` | GET | Web UI (search + file upload) |
 | `/query` | POST | `{ "query": "...", "k": 3 }` |
 | `/ingest` | POST | File upload (multipart) |
 | `/health` | GET | Readiness check |
 
-## Environment variables
+## ðŸ”§ Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -54,19 +63,17 @@ alcove serve
 | `CHUNK_OVERLAP` | `150` | Overlap between chunks |
 | `RAW_DIR` | `data/raw` | Input directory for ingestion |
 
-## Docker
+## ðŸ³ Docker (optional)
 
 ```bash
 docker compose up -d --build
 ```
 
-The container exposes port 8000 and includes a `/health` endpoint for readiness checks.
+## ðŸ’¾ Backup
 
-## Backup
+Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend).
 
-Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend). These directories contain everything Alcove needs to reconstruct the index.
-
-## Running tests
+## ðŸ§ª Running tests
 
 ```bash
 pip install alcove-search[dev]

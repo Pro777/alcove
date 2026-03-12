@@ -44,20 +44,9 @@ def _format_search_results(result):
         print(f'  "{excerpt}"')
 
 
-def _dispatch_search(query, k=3, mode="semantic"):
-    """Route to the correct retriever based on search mode."""
-    from alcove.query.retriever import query_hybrid, query_keyword, query_text
-    if mode == "keyword":
-        return query_keyword(query, n_results=k)
-    elif mode == "hybrid":
-        return query_hybrid(query, n_results=k)
-    else:
-        return query_text(query, n_results=k)
-
-
 def cmd_search(args):
-    mode = getattr(args, "mode", "semantic")
-    result = _dispatch_search(args.query, k=args.k, mode=mode)
+    from alcove.query.retriever import query_text
+    result = query_text(args.query, n_results=args.k, collection_name=args.collection)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -98,19 +87,16 @@ def cmd_plugins(_args):
         print(f"  {p['type']:10s}  {p['name']:20s}  {p['module']}")
 
 
-def cmd_collections(_args):
-    from alcove.index.backend import get_backend
-    from alcove.index.embedder import get_embedder
-    try:
-        backend = get_backend(get_embedder())
-        colls = backend.list_collections()
-    except Exception:
-        colls = []
-    if not colls:
-        print("No collections found.")
-        return
-    for c in colls:
-        print(f"  {c['name']}  ({c['doc_count']} docs)")
+def cmd_mirrulations_demo(args):
+    from alcove.mirrulations import ingest_mirrulations
+
+    count = ingest_mirrulations(
+        source=args.source,
+        agencies=args.agency,
+        collection_name=args.collection,
+        jsonl_out=args.jsonl_out,
+    )
+    print(f"indexed {count} Mirrulations records into {args.collection}")
 
 
 def cmd_seed_demo(_args):
@@ -134,11 +120,8 @@ def _add_search_parser(sub, name, hidden=False):
     p = sub.add_parser(name, help=help_text)
     p.add_argument("query", help="Search terms")
     p.add_argument("--k", type=int, default=3, help="Number of results (default: 3)")
+    p.add_argument("--collection", default=None, help="Optional vector collection override")
     p.add_argument("--json", action="store_true", default=False, help="Output raw JSON instead of formatted results")
-    p.add_argument(
-        "--mode", choices=["semantic", "keyword", "hybrid"],
-        default="semantic", help="Search mode (default: semantic)",
-    )
     p.set_defaults(func=cmd_search)
     return p
 
@@ -169,10 +152,6 @@ def main():
     # query (hidden alias for backwards compatibility)
     _add_search_parser(sub, "query", hidden=True)
 
-    # collections
-    p_colls = sub.add_parser("collections", help="List named collections")
-    p_colls.set_defaults(func=cmd_collections)
-
     # status
     p_status = sub.add_parser("status", help="Show index and configuration status")
     p_status.set_defaults(func=cmd_status)
@@ -180,6 +159,26 @@ def main():
     # seed-demo
     p_seed = sub.add_parser("seed-demo", help="Fetch and index demo corpus")
     p_seed.set_defaults(func=cmd_seed_demo)
+
+    # mirrulations-demo
+    p_mirrulations = sub.add_parser(
+        "mirrulations-demo",
+        help="Ingest a local Mirrulations text subset into a dedicated collection",
+    )
+    p_mirrulations.add_argument("source", nargs="?", default=None, help="Local Mirrulations root, agency, docket, or text-* path")
+    p_mirrulations.add_argument(
+        "--agency",
+        action="append",
+        default=[],
+        help="Optional agency filter; repeat for multiple agencies (e.g. --agency EPA --agency SEC)",
+    )
+    p_mirrulations.add_argument(
+        "--collection",
+        default="mirrulations_docs",
+        help="Target vector collection (default: mirrulations_docs)",
+    )
+    p_mirrulations.add_argument("--jsonl-out", default=None, help="Optional path to write normalized records as JSONL")
+    p_mirrulations.set_defaults(func=cmd_mirrulations_demo)
 
     # plugins
     p_plugins = sub.add_parser("plugins", help="List installed plugins")

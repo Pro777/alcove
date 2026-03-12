@@ -150,6 +150,23 @@ class TestGetBackend:
         backend = get_backend(embedder)
         assert isinstance(backend, ChromaBackend)
 
+    def test_collection_override_uses_requested_name(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("VECTOR_BACKEND", "chromadb")
+        monkeypatch.setenv("CHROMA_COLLECTION", "default_collection")
+        from alcove.index.backend import get_backend
+
+        backend = get_backend(embedder, collection_name="regulatory_test_docs")
+        backend.add(
+            ids=["doc1"],
+            embeddings=embedder.embed(["hello world"]),
+            documents=["hello world"],
+            metadatas=[{"source": "test.txt"}],
+        )
+
+        result = backend.query(embedder.embed(["hello world"])[0], k=1)
+        assert result["ids"][0] == ["doc1"]
+
     @_skip_zvec
     def test_zvec_explicit(self, embedder, tmp_path, monkeypatch):
         monkeypatch.setenv("ZVEC_PATH", str(tmp_path / "zvec"))

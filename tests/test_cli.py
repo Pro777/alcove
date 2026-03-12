@@ -23,6 +23,17 @@ def test_alcove_query_alias_still_works():
     )
     assert result.returncode == 0
     assert "--k" in result.stdout
+    assert "--collection" in result.stdout
+
+
+def test_alcove_mirrulations_demo_help_mentions_agency_filter():
+    result = subprocess.run(
+        [sys.executable, "-m", "alcove", "mirrulations-demo", "--help"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    assert "--agency" in result.stdout
+    assert "mirrulations_docs" in result.stdout
 
 
 def test_alcove_version():

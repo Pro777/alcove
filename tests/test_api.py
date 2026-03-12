@@ -26,6 +26,21 @@ def test_query_post_returns_json():
     assert isinstance(data, dict)
 
 
+def test_query_post_passes_collection_override(monkeypatch):
+    def fake_query_text(query, k, collection_name=None):
+        assert query == "test"
+        assert k == 2
+        assert collection_name == "mirrulations_docs"
+        return {"ids": [[]], "documents": [[]], "distances": [[]]}
+
+    monkeypatch.setattr("alcove.query.api.query_text", fake_query_text)
+
+    r = client.post("/query", json={"query": "test", "k": 2, "collection": "mirrulations_docs"})
+
+    assert r.status_code == 200
+    assert isinstance(r.json(), dict)
+
+
 def test_ingest_skips_unsupported_format():
     """Unsupported file formats are gracefully skipped (200 with status=skipped), not rejected."""
     r = client.post(
