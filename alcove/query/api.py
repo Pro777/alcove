@@ -161,7 +161,7 @@ templates.env.globals["alcove_logo_text"] = os.environ.get("ALCOVE_LOGO_TEXT", "
 templates.env.globals["alcove_accent_color"] = os.environ.get("ALCOVE_ACCENT_COLOR", "")
 templates.env.globals["alcove_accent_color_light"] = os.environ.get("ALCOVE_ACCENT_COLOR_LIGHT", "")
 
-_default_footer = f"{os.environ.get('ALCOVE_TITLE', 'Alcove')} \u00a9 {datetime.now().year}"
+_default_footer = f"{os.environ.get('ALCOVE_TITLE', 'Alcove')} \u00a9 {datetime.now(timezone.utc).year}"
 templates.env.globals["alcove_footer_text"] = os.environ.get("ALCOVE_FOOTER_TEXT", _default_footer)
 
 # Mount raw document directory so users can click through to source files
@@ -222,10 +222,25 @@ def search(request: Request, q: str = "", k: int = 20, collections: str = "", mo
         try:
             raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
             documents = raw.get("documents", [[]])[0]
-            metadatas = raw.get("metadatas", [[]])[0]
-            distances = raw.get("distances", [[]])[0]
+            metadatas_block = raw.get("metadatas")
+            metadatas = (
+                metadatas_block[0]
+                if metadatas_block and metadatas_block[0]
+                else [{} for _ in documents]
+            )
+            distances_block = raw.get("distances")
+            distances = (
+                distances_block[0]
+                if distances_block and distances_block[0]
+                else [1.0 for _ in documents]
+            )
+            # Pad to document length if backend returns mismatched lists
+            if len(metadatas) < len(documents):
+                metadatas = metadatas + [{} for _ in range(len(documents) - len(metadatas))]
+            if len(distances) < len(documents):
+                distances = distances + [1.0 for _ in range(len(documents) - len(distances))]
 
-            for doc, meta, dist in zip(documents, metadatas, distances, strict=True):
+            for doc, meta, dist in zip(documents, metadatas, distances):
                 snippets_raw = _extract_snippets(doc, q)
                 snippets_html = [_highlight(html.escape(s), q) for s in snippets_raw]
 
