@@ -8,8 +8,13 @@
     <script>
       (function(){
         var el = document.getElementById('back-link');
-        if (el && document.referrer && document.referrer.indexOf('/search') !== -1) {
-          el.href = document.referrer;
+        if (el && document.referrer) {
+          try {
+            var ref = new URL(document.referrer);
+            if (ref.origin === location.origin && ref.pathname.indexOf('/search') !== -1) {
+              el.href = document.referrer;
+            }
+          } catch (e) { /* invalid URL, keep default href */ }
         }
       })();
     </script>
@@ -201,9 +206,13 @@
     // Copy URL
     var url = location.href;
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(function () {
-        showToast(s === e ? 'Copied link to line ' + s : 'Copied link to lines ' + s + '-' + e);
-      });
+      navigator.clipboard.writeText(url)
+        .then(function () {
+          showToast(s === e ? 'Copied link to line ' + s : 'Copied link to lines ' + s + '-' + e);
+        })
+        .catch(function () {
+          showToast('Failed to copy link');
+        });
     }
   }
 

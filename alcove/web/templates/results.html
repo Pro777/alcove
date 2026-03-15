@@ -70,13 +70,10 @@
             </div>
           </div>
           <div class="result-snippets" id="snippets-{{ loop.index }}">
-            {% for snippet in r.snippets %}
-            <p class="snippet-line">{{ snippet }}</p>
-            {% if not loop.last %}<span class="snippet-sep" aria-hidden="true">...</span>{% endif %}
-            {% endfor %}
+            <p class="snippet-line">{{ r.text }}</p>
           </div>
           <div class="result-fulltext" id="fulltext-{{ loop.index }}" hidden>
-            <div class="result-chunk">{{ r.full_text }}</div>
+            <div class="result-chunk">{{ r.text }}</div>
           </div>
           <button class="toggle-full-btn" type="button"
                   aria-expanded="false"
