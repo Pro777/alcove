@@ -1,49 +1,247 @@
 {% extends "base.html" %}
 
+{% block title %}{% if query %}{{ query }} - {{ alcove_title }} Search{% else %}Results - {{ alcove_title }}{% endif %}{% endblock %}
+
 {% block content %}
-  {% if results %}
-  <div class="results-header">
-    <span class="results-count">{{ results | length }} result{% if results | length != 1 %}s{% endif %} for</span>
-    <span class="results-query">&ldquo;{{ query | e }}&rdquo;</span>
-  </div>
+  <div class="main-layout">
+    <aside class="sidebar" id="sidebar" role="group" aria-label="Filter by collection" style="display:none;">
+      <h2 class="sidebar-heading">Collections</h2>
+      <div class="sidebar-collections" id="collections-checkboxes"></div>
+    </aside>
 
-  <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
-    {% for r in results %}
-    {% set _fname = r.source.split('/')|last %}
-    {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
-    {% set score_pct = (r.score * 100) | round | int %}
-    {% set card_id = "card-meta-" ~ loop.index %}
-    <div class="result-card" aria-describedby="{{ card_id }}">
-      <div class="result-meta" id="{{ card_id }}">
-        <div class="result-file-info">
-          <div class="file-type-icon" aria-label="{{ ext }} file" title="{{ ext }}">{{ ext }}</div>
-          <span class="result-filename" title="{{ r.source | e }}">{{ _fname | e }}</span>
-          {% if r.collection %}
-          <span class="collection-badge" title="Collection: {{ r.collection | e }}">{{ r.collection | e }}</span>
-          {% endif %}
-        </div>
-        <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
-          <span class="score-label">Score</span>
-          <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
+    <div class="main-column">
+      <div class="results-search-bar">
+        <form class="search-form search-form-inline" method="GET" action="/search" role="search">
+          <div class="search-input-wrap">
+            <span class="search-icon" aria-hidden="true">&#128269;</span>
+            <input type="text" name="q" value="{{ query | e }}" placeholder="Search..." aria-label="Search">
           </div>
-          <span class="score-value">{{ "%.3f" | format(r.score) }}</span>
-        </div>
+          <input type="hidden" id="results-collections-hidden" name="collections" value="" disabled>
+          <fieldset class="search-mode-selector search-mode-inline" role="radiogroup" aria-label="Search mode">
+            <label class="mode-option"><input type="radio" name="mode" value="semantic" {{ 'checked' if mode == 'semantic' else '' }}><span class="mode-label">Semantic</span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="keyword" {{ 'checked' if mode == 'keyword' else '' }}><span class="mode-label">Keyword</span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="hybrid" {{ 'checked' if mode == 'hybrid' else '' }}><span class="mode-label">Hybrid</span></label>
+          </fieldset>
+          <button type="submit" class="search-submit">Search</button>
+        </form>
       </div>
-      <div class="result-chunk">{{ r.text | safe }}</div>
+
+      {% if search_error %}
+      <div class="search-error" role="alert">
+        <div class="search-error-icon" aria-hidden="true">!</div>
+        <p class="search-error-heading">Search is temporarily unavailable</p>
+        <p class="search-error-sub">Something went wrong while searching. This is usually temporary.</p>
+        <a class="search-error-retry" href="/search?q={{ query | urlencode }}&mode={{ mode | default('semantic') | urlencode }}">Try again</a>
+      </div>
+
+      {% elif results %}
+      <div class="results-header">
+        <span class="results-count">{{ results | length }} result{% if results | length != 1 %}s{% endif %} for</span>
+        <span class="results-query">&ldquo;{{ query | e }}&rdquo;</span>
+      </div>
+
+      <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
+        {% for r in results %}
+        {% set _fname = r.source.split('/')|last %}
+        {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
+        {% set ext_lower = _fname.rsplit('.', 1)[1].lower() if '.' in _fname else '' %}
+        {% set score_pct = (r.score * 100) | round | int %}
+        {% set card_id = "card-meta-" ~ loop.index %}
+        <div class="result-card" aria-describedby="{{ card_id }}">
+          <div class="result-meta" id="{{ card_id }}">
+            <div class="result-meta-left">
+              <div class="result-file-info">
+                <a href="/view?source={{ _fname | urlencode }}{% if query %}&q={{ query | urlencode }}{% endif %}" class="file-link" title="View {{ _fname | e }}">
+                  <div class="file-type-icon" data-ext="{{ ext_lower }}" aria-label="{{ ext }} file" title="{{ ext }}">{{ ext }}</div>
+                  <span class="result-filename">{{ _fname | e }}</span>
+                </a>
+              </div>
+              {% if r.collection %}
+              <span class="collection-badge" title="Collection: {{ r.collection | e }}">{{ r.collection | e }}</span>
+              {% endif %}
+            </div>
+            <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
+              <span class="score-tip">Cosine similarity: 1.0 = exact match, 0 = unrelated</span>
+              <span class="score-label">Score</span>
+              <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
+              </div>
+              <span class="score-value">{{ "%.3f" | format(r.score) }}</span>
+            </div>
+          </div>
+          <div class="result-snippets" id="snippets-{{ loop.index }}">
+            {% for snippet in r.snippets %}
+            <p class="snippet-line">{{ snippet | safe }}</p>
+            {% if not loop.last %}<span class="snippet-sep" aria-hidden="true">...</span>{% endif %}
+            {% endfor %}
+          </div>
+          <div class="result-fulltext" id="fulltext-{{ loop.index }}" hidden>
+            <div class="result-chunk">{{ r.full_text | safe }}</div>
+          </div>
+          <button class="toggle-full-btn" type="button"
+                  aria-expanded="false"
+                  aria-controls="fulltext-{{ loop.index }}"
+                  data-idx="{{ loop.index }}">Show full text</button>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <div class="no-results" role="status">
+        <div class="no-results-icon" aria-hidden="true">&#128269;</div>
+        <p class="no-results-heading">No results found for &ldquo;{{ query | e }}&rdquo;</p>
+        <p class="no-results-sub">
+          Try broader terms, check spelling, or switch search modes.
+        </p>
+        <a class="no-results-back" href="/?q={{ query | urlencode }}">Refine your search</a>
+      </div>
+      {% endif %}
+
+      <a class="back-link" href="/">&#8592; Back to search</a>
     </div>
-    {% endfor %}
   </div>
 
-  {% else %}
-  <div class="no-results" role="status">
-    <div class="no-results-icon" aria-hidden="true">&#128269;</div>
-    <p class="no-results-heading">No results found</p>
-    <p class="no-results-sub">
-      No documents matched &ldquo;{{ query | e }}&rdquo;. Try different search terms or upload more documents.
-    </p>
-  </div>
-  {% endif %}
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var urlColls = params.get("collections");
+  var activeSet = (urlColls && urlColls.trim()) ? urlColls.split(",") : null;
 
-  <a class="back-link" href="/">&#8592; Back to search</a>
+  fetch("/collections")
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.length) return;
+      var sidebar = document.getElementById("sidebar");
+      var box = document.getElementById("collections-checkboxes");
+      sidebar.style.display = "";
+      sidebar.parentNode.classList.add("has-sidebar");
+      for (var i = 0; i < data.length; i++) {
+        var c = data[i];
+        var label = document.createElement("label");
+        label.className = "collection-chip";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = c.name;
+        cb.className = "collection-cb";
+        // Check all if no filter, or check if in the active set
+        if (!activeSet || activeSet.indexOf(c.name) !== -1) {
+          cb.checked = true;
+        }
+        cb.addEventListener("change", function () {
+          var checked = box.querySelectorAll("input:checked");
+          var vals = [];
+          for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+          var all = box.querySelectorAll("input");
+          var colParam = (vals.length === all.length) ? "" : vals.join(",");
+          params.set("collections", colParam);
+          window.location.search = params.toString();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
+        box.appendChild(label);
+      }
+    })
+    .catch(function () { /* silently ignore if collections endpoint fails */ });
+
+  // Wire sidebar checkboxes into the inline search form's hidden field
+  var inlineForm = document.querySelector('.search-form-inline');
+  var inlineHidden = document.getElementById('results-collections-hidden');
+  if (inlineForm && inlineHidden) {
+    inlineForm.addEventListener('submit', function () {
+      var box = document.getElementById('collections-checkboxes');
+      var checked = box.querySelectorAll('input:checked');
+      var all = box.querySelectorAll('input');
+      if (checked.length === all.length || checked.length === 0) {
+        inlineHidden.disabled = true;
+      } else {
+        var vals = [];
+        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+        inlineHidden.value = vals.join(',');
+        inlineHidden.disabled = false;
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  var btns = document.querySelectorAll('.toggle-full-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function() {
+      var idx = this.getAttribute('data-idx');
+      var snippets = document.getElementById('snippets-' + idx);
+      var full = document.getElementById('fulltext-' + idx);
+      var expanded = this.getAttribute('aria-expanded') === 'true';
+      if (expanded) {
+        full.hidden = true;
+        snippets.hidden = false;
+        this.setAttribute('aria-expanded', 'false');
+        this.textContent = 'Show full text';
+      } else {
+        full.hidden = false;
+        snippets.hidden = true;
+        this.setAttribute('aria-expanded', 'true');
+        this.textContent = 'Show less';
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  var palette = ['amber','sienna','copper','sage','blue','rose','slate'];
+  function hash(s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) {
+      h = ((h << 5) - h) + s.charCodeAt(i);
+      h = h & h;
+    }
+    return Math.abs(h);
+  }
+  var badges = document.querySelectorAll('.collection-badge');
+  for (var i = 0; i < badges.length; i++) {
+    var name = badges[i].textContent.trim();
+    badges[i].setAttribute('data-badge-color', palette[hash(name) % palette.length]);
+  }
+})();
+</script>
+
+{% if results and results | length > 10 %}
+<style>
+  .pagination { display:flex; justify-content:center; gap:0.5rem; margin:1.5rem 0 0.5rem; flex-wrap:wrap; }
+  .pagination button { background:var(--bg-card,#241f18); border:1px solid var(--gold-dim,rgba(211,166,111,0.3)); color:var(--gold,#d3a66f); padding:0.35rem 0.75rem; border-radius:var(--radius-md,0.5rem); cursor:pointer; font-size:0.85rem; }
+  .pagination button.active { background:var(--gold,#d3a66f); color:var(--bg,#1a1510); font-weight:600; }
+  .pagination button:hover:not(.active) { border-color:var(--gold,#d3a66f); }
+</style>
+<script>
+(function(){
+  var PER=10;
+  var cards=document.querySelectorAll('.result-card');
+  if(cards.length<=PER) return;
+  var pages=Math.ceil(cards.length/PER);
+  var wrap=document.createElement('div');
+  wrap.className='pagination';
+  wrap.setAttribute('aria-label','Pagination');
+  var list=document.querySelector('.results-list');
+  list.parentNode.insertBefore(wrap,list.nextSibling);
+  function show(p){
+    for(var i=0;i<cards.length;i++){
+      cards[i].style.display=(i>=p*PER&&i<(p+1)*PER)?'':'none';
+    }
+    wrap.innerHTML='';
+    for(var j=0;j<pages;j++){
+      var b=document.createElement('button');
+      b.textContent=j+1;
+      if(j===p) b.className='active';
+      b.setAttribute('aria-label','Page '+(j+1));
+      (function(n){b.addEventListener('click',function(){show(n);window.scrollTo(0,0);});})(j);
+      wrap.appendChild(b);
+    }
+  }
+  show(0);
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename | e }} - {{ alcove_title }}{% endblock %}
+
+{% block content %}
+  <div class="view-header">
+    <a class="back-link" href="javascript:history.back()">&#8592; Back to results</a>
+    <h2 class="view-title">{{ filename | e }}</h2>
+    {% if query %}
+    <span class="view-query">Highlighting: &ldquo;{{ query | e }}&rdquo;</span>
+    {% endif %}
+  </div>
+
+  {% if error %}
+  <div class="view-error" role="alert">{{ error | e }}</div>
+  {% elif lines %}
+
+  {% if truncated %}
+  <div class="view-truncation-notice" role="status">
+    Showing first {{ shown_lines | default(0) }} of {{ "{:,}".format(total_lines | default(0)) }} lines.
+    The full document is too large to display in the browser.
+  </div>
+  {% endif %}
+
+  <div class="doc-loading" id="doc-loading" aria-live="polite">Loading document...</div>
+  <ol class="doc-lines" id="doc-lines" aria-label="Document" style="display:none">
+    {% for l in lines %}
+    <li id="l{{ l.num }}" data-line="{{ l.num }}" class="{% if l.blank %}is-blank{% endif %}">
+      <span class="line-num" aria-hidden="true">{{ l.num }}</span>
+      <span class="line-text">{{ l.text | safe if l.text else '&nbsp;' }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+
+  <div class="line-toast" id="line-toast" aria-live="polite"></div>
+  {% else %}
+  <p class="view-empty">This document is empty.</p>
+  {% endif %}
+
+<style>
+  .view-header {
+    margin-bottom: 1.5rem;
+  }
+  .view-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gold, #d3a66f);
+    margin: 0.5rem 0 0.25rem;
+    word-break: break-word;
+  }
+  .view-query {
+    font-size: 0.8rem;
+    color: var(--text-muted, #999);
+  }
+  .view-error {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--error, #f87171);
+    padding: 1rem;
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .doc-lines {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.875rem;
+    line-height: 1.7;
+    counter-reset: line;
+  }
+  .doc-lines li {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    transition: background 0.15s ease;
+  }
+  .doc-lines li:not(.is-blank) {
+    cursor: pointer;
+  }
+  .doc-lines li:hover:not(.is-blank) {
+    background: rgba(211, 166, 111, 0.05);
+  }
+  .doc-lines li:target,
+  .doc-lines li.is-selected {
+    background: rgba(211, 166, 111, 0.1);
+  }
+  .doc-lines li.is-selected {
+    box-shadow: inset 3px 0 0 rgba(211, 166, 111, 0.7);
+  }
+  .line-num {
+    color: var(--text-muted, #666);
+    text-align: right;
+    user-select: none;
+    font-size: 0.75rem;
+    padding-top: 0.1rem;
+  }
+  .line-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text, #f5f0e8);
+  }
+  .is-blank .line-text {
+    min-height: 1.2em;
+  }
+
+  .line-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(2rem);
+    background: var(--bg-card, #241f18);
+    border: 1px solid var(--gold-dim, rgba(211, 166, 111, 0.5));
+    color: var(--gold, #d3a66f);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md, 0.5rem);
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .line-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .view-truncation-notice {
+    background: rgba(211, 166, 111, 0.08);
+    border: 1px solid rgba(211, 166, 111, 0.25);
+    color: var(--gold, #d3a66f);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md, 0.5rem);
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .doc-loading {
+    color: var(--text-muted, #999);
+    font-size: 0.9rem;
+    padding: 2rem 0;
+  }
+</style>
+
+<script>
+(function () {
+  var loading = document.getElementById('doc-loading');
+  var docEl = document.getElementById('doc-lines');
+  if (docEl) {
+    docEl.style.display = '';
+    if (loading) loading.style.display = 'none';
+  }
+
+  var startLine = null;
+  var toast = document.getElementById('line-toast');
+  var toastTimer = null;
+
+  function parseHash() {
+    var h = location.hash.replace('#', '');
+    var m = h.match(/^l(\d+)(?:-l(\d+))?$/);
+    if (!m) return null;
+    var s = parseInt(m[1], 10);
+    var e = m[2] ? parseInt(m[2], 10) : s;
+    if (s > e) { var t = s; s = e; e = t; }
+    return { start: s, end: e };
+  }
+
+  function clear() {
+    var sel = document.querySelectorAll('.doc-lines .is-selected');
+    for (var i = 0; i < sel.length; i++) sel[i].classList.remove('is-selected');
+  }
+
+  function applyFromHash() {
+    clear();
+    var r = parseHash();
+    if (!r) return;
+    startLine = r.start;
+    for (var n = r.start; n <= r.end; n++) {
+      var el = document.getElementById('l' + n);
+      if (el) el.classList.add('is-selected');
+    }
+    // Scroll first selected line into view
+    var first = document.getElementById('l' + r.start);
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function setHash(s, e) {
+    var frag = s === e ? '#l' + s : '#l' + s + '-l' + e;
+    history.replaceState(null, '', frag);
+    applyFromHash();
+    // Copy URL
+    var url = location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        showToast(s === e ? 'Copied link to line ' + s : 'Copied link to lines ' + s + '-' + e);
+      });
+    }
+  }
+
+  function showToast(msg) {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2000);
+  }
+
+  // Click handler
+  var lines = document.querySelector('.doc-lines');
+  if (lines) {
+    lines.addEventListener('click', function (ev) {
+      var li = ev.target.closest('li[data-line]');
+      if (!li || li.classList.contains('is-blank')) return;
+      var n = parseInt(li.dataset.line, 10);
+      if (ev.shiftKey && startLine !== null) {
+        var s = Math.min(startLine, n);
+        var e = Math.max(startLine, n);
+        setHash(s, e);
+      } else {
+        startLine = n;
+        setHash(n, n);
+      }
+    });
+  }
+
+  window.addEventListener('hashchange', applyFromHash);
+  applyFromHash();
+})();
+</script>
+{% endblock %}

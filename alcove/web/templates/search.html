@@ -1,78 +1,86 @@
 {% extends "base.html" %}
 
+{% block title %}{{ alcove_title }} - Search{% endblock %}
+
 {% block content %}
-  {% if doc_count == 0 %}
-  <div class="welcome-banner" role="status">
-    <h2>Welcome to Alcove</h2>
-    <p>Your index is empty. Upload documents below or run <code>alcove seed-demo</code> to get started.</p>
-  </div>
-  {% endif %}
+  <div class="main-layout">
+    <aside class="sidebar" id="sidebar" role="group" aria-label="Filter by collection" style="display:none;">
+      <h2 class="sidebar-heading">Collections</h2>
+      <div class="sidebar-collections" id="collections-checkboxes"></div>
+    </aside>
 
-  <form class="search-form" method="GET" action="/search" role="search">
-    <label for="search-input" class="sr-only">Search your documents</label>
-    <div class="search-input-wrap">
-      <span class="search-icon" aria-hidden="true">&#128269;</span>
-      <input
-        id="search-input"
-        type="text"
-        name="q"
-        placeholder="Ask anything about your documents..."
-        autofocus
-        aria-label="Search your documents">
+    <div class="main-column">
+      {% if doc_count == 0 %}
+      <div class="welcome-banner" role="status">
+        <h2>No documents indexed yet</h2>
+        <p>Drop files into the upload area below, or point Alcove at a directory:</p>
+        <p><code>alcove ingest /path/to/docs</code></p>
+        <p>You can also run <code>alcove seed-demo</code> to load sample documents and try it out.</p>
+      </div>
+      {% endif %}
+
+      <form class="search-form" method="GET" action="/search" role="search">
+        <label for="search-input" class="sr-only">Search your documents</label>
+        <div class="search-input-wrap">
+          <span class="search-icon" aria-hidden="true">&#128269;</span>
+          <input
+            id="search-input"
+            type="text"
+            name="q"
+            placeholder="Ask anything about your documents..."
+            autofocus
+            aria-label="Search your documents">
+        </div>
+        <input type="hidden" id="collections-hidden" name="collections" value="">
+
+        <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
+          <label class="mode-option">
+            <input type="radio" name="mode" value="semantic" checked>
+            <span class="mode-label">Semantic</span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="mode" value="keyword">
+            <span class="mode-label">Keyword</span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="mode" value="hybrid">
+            <span class="mode-label">Hybrid</span>
+          </label>
+        </fieldset>
+
+        <button type="submit" class="search-btn">Search</button>
+      </form>
+
+      <div
+        class="upload-zone"
+        id="upload-zone"
+        role="button"
+        tabindex="0"
+        aria-label="Upload files: drop files here or press Enter to browse"
+        aria-describedby="formats-note">
+        <span class="upload-icon" aria-hidden="true">&#8679;</span>
+        <span class="upload-label">Drop files here or click to browse</span>
+        <input
+          type="file"
+          id="file-input"
+          accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
+          aria-label="Choose files to upload"
+          multiple
+          hidden>
+      </div>
+
+      <div
+        class="upload-status"
+        id="upload-status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy="false"></div>
+
+      <p class="formats-note" id="formats-note">
+        Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
+      </p>
     </div>
-    <input type="hidden" id="collections-hidden" name="collections" value="">
-
-    <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
-      <label class="mode-option">
-        <input type="radio" name="mode" value="semantic" checked>
-        <span class="mode-label">Semantic</span>
-      </label>
-      <label class="mode-option">
-        <input type="radio" name="mode" value="keyword">
-        <span class="mode-label">Keyword</span>
-      </label>
-      <label class="mode-option">
-        <input type="radio" name="mode" value="hybrid">
-        <span class="mode-label">Hybrid</span>
-      </label>
-    </fieldset>
-
-    <button type="submit" class="search-btn">Search</button>
-  </form>
-
-  <div class="collections-filter" id="collections-filter" role="group" aria-label="Filter by collection" style="display:none;">
-    <span class="collections-label">Collections:</span>
-    <div class="collections-checkboxes" id="collections-checkboxes"></div>
   </div>
-
-  <div
-    class="upload-zone"
-    id="upload-zone"
-    role="button"
-    tabindex="0"
-    aria-label="Upload files: drop files here or press Enter to browse"
-    aria-describedby="formats-note">
-    <span class="upload-icon" aria-hidden="true">&#8679;</span>
-    <span class="upload-label">Drop files here or click to browse</span>
-    <input
-      type="file"
-      id="file-input"
-      accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
-      aria-label="Choose files to upload"
-      multiple
-      hidden>
-  </div>
-
-  <div
-    class="upload-status"
-    id="upload-status"
-    aria-live="polite"
-    aria-atomic="true"
-    aria-busy="false"></div>
-
-  <p class="formats-note" id="formats-note">
-    Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
-  </p>
 
 <style>
   .search-mode-selector {
@@ -110,10 +118,11 @@
     .then(function (res) { return res.json(); })
     .then(function (data) {
       if (!data || !data.length) return;
-      var wrap = document.getElementById("collections-filter");
+      var sidebar = document.getElementById("sidebar");
       var box = document.getElementById("collections-checkboxes");
       var hidden = document.getElementById("collections-hidden");
-      wrap.style.display = "";
+      sidebar.style.display = "";
+      sidebar.parentNode.classList.add("has-sidebar");
       for (var i = 0; i < data.length; i++) {
         var c = data[i];
         var label = document.createElement("label");
@@ -122,17 +131,25 @@
         cb.type = "checkbox";
         cb.value = c.name;
         cb.className = "collection-cb";
+        cb.checked = true;
         label.appendChild(cb);
         label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
         box.appendChild(label);
       }
       // On form submit, gather checked collections into the hidden field
+      // Omit collections param entirely when all are checked (means "all")
       var form = document.querySelector(".search-form");
       form.addEventListener("submit", function () {
         var checked = box.querySelectorAll("input:checked");
-        var vals = [];
-        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
-        hidden.value = vals.join(",");
+        var all = box.querySelectorAll("input");
+        if (checked.length === all.length || checked.length === 0) {
+          hidden.disabled = true;  // omit from URL
+        } else {
+          var vals = [];
+          for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+          hidden.value = vals.join(",");
+          hidden.disabled = false;
+        }
       });
     })
     .catch(function () { /* silently ignore if collections endpoint fails */ });

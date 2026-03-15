@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alcove</title>
+  <title>{% block title %}{{ alcove_title }}{% endblock %}</title>
   <script>
     (function() {
       var t = localStorage.getItem('alcove-theme');
@@ -14,6 +14,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  {% if alcove_accent_color or alcove_accent_color_light %}
+  <style>
+    {% if alcove_accent_color %}
+    :root, [data-theme="dark"] {
+      --gold: {{ alcove_accent_color }};
+      --gold-dim: {{ alcove_accent_color }}80;
+      --gold-faint: {{ alcove_accent_color }}14;
+      --gold-glow: {{ alcove_accent_color }}2e;
+    }
+    {% endif %}
+    {% if alcove_accent_color_light %}
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme]) {
+        --gold: {{ alcove_accent_color_light }};
+        --gold-dim: {{ alcove_accent_color_light }}99;
+        --gold-faint: {{ alcove_accent_color_light }}0f;
+        --gold-glow: {{ alcove_accent_color_light }}24;
+      }
+    }
+    [data-theme="light"] {
+      --gold: {{ alcove_accent_color_light }};
+      --gold-dim: {{ alcove_accent_color_light }}99;
+      --gold-faint: {{ alcove_accent_color_light }}0f;
+      --gold-glow: {{ alcove_accent_color_light }}24;
+    }
+    {% endif %}
+  </style>
+  {% endif %}
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -25,11 +53,11 @@
   <div class="page-wrap">
     <header class="site-header">
       <div class="container">
-        <div class="logo-row">
-          <div class="logo-mark" aria-hidden="true">A</div>
-          <h1 class="site-title">Alcove</h1>
-        </div>
-        <p class="site-tagline">Document Search</p>
+        <a href="/" class="logo-row" style="text-decoration:none;color:inherit;">
+          <div class="logo-mark" aria-hidden="true">{{ alcove_logo_text }}</div>
+          <h1 class="site-title">{{ alcove_title }}</h1>
+        </a>
+        <p class="site-tagline">{{ alcove_tagline }}</p>
       </div>
     </header>
 
@@ -43,7 +71,7 @@
       <div class="container">
         <p>
           <span class="footer-dot" aria-hidden="true"></span>
-          Runs locally. No cloud. No telemetry.
+          {{ alcove_footer_text }}
         </p>
       </div>
     </footer>
