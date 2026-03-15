@@ -8,9 +8,11 @@ alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
 
+For how the pipeline works, see [Architecture](ARCHITECTURE.md).
+
 ## Enabling semantic search
 
-By default, Alcove uses a deterministic hash embedder (offline, zero download). For real semantic search:
+By default, Alcove uses a deterministic hash embedder (offline, no external models). For semantic search:
 
 ```bash
 pip install alcove-search[semantic]
@@ -18,7 +20,7 @@ EMBEDDER=sentence-transformers alcove seed-demo
 EMBEDDER=sentence-transformers alcove serve
 ```
 
-This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally; subsequent runs are offline.
+This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. See [Seed Corpus](SEED_CORPUS.md) for what `seed-demo` includes. The model is cached locally; subsequent runs are offline.
 
 ## Custom documents
 
@@ -27,7 +29,7 @@ alcove ingest /path/to/your/files
 alcove serve
 ```
 
-Files can also be uploaded through the web UI at `http://localhost:8000`.
+Files can also be uploaded via the web UI at `http://localhost:8000`.
 
 ## Web UI and API
 
@@ -37,10 +39,12 @@ alcove serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Web UI (search and file upload) |
+| `/` | GET | Web UI: search and file upload |
 | `/query` | POST | `{ "query": "...", "k": 3 }` |
 | `/ingest` | POST | File upload (multipart) |
 | `/health` | GET | Readiness check |
+
+Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities).
 
 ## Environment variables
 
@@ -60,7 +64,7 @@ alcove serve
 docker compose up -d --build
 ```
 
-The container exposes port 8000 and includes a `/health` endpoint for readiness checks.
+Port 8000 is exposed; the `/health` endpoint signals readiness.
 
 ## Backup
 
