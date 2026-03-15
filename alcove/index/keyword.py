@@ -37,7 +37,7 @@ class KeywordIndex:
                     if not line:
                         continue
                     rec = json.loads(line)
-                    text = rec.get("text", "")
+                    text = rec.get("chunk", rec.get("text", ""))
                     self._chunks.append({
                         "id": rec.get("id", ""),
                         "text": text,

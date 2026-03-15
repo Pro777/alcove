@@ -22,7 +22,7 @@ You should receive an acknowledgment within 48 hours. We will work with you to u
 
 Local disk only. No outbound network calls. No telemetry. No account to create.
 
-We do not want your data. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index.
+We do not want your data. Alcove only retrieves and returns matching documents (does not generate or fabricate content). The [architecture](ARCHITECTURE.md#boundary) assumes the operator owns the hardware, controls the storage, and decides what enters the index.
 
 ### What Alcove does
 
@@ -48,9 +48,9 @@ Input sanitization beyond the documented attack surface below.
 
 ### Operator responsibilities
 
-Bind `alcove serve` to `127.0.0.1` if not behind a reverse proxy. Use OS-level disk encryption for data at rest. Keep dependencies updated. Do not expose the API to the public internet without adding authentication.
+Bind `alcove serve` to `127.0.0.1` if not behind a reverse proxy (see [operations guide](OPERATIONS.md#web-ui-and-api) for details). Use OS-level disk encryption for data at rest. Keep dependencies updated. Do not expose the API to the public internet without adding authentication.
 
-Alcove handles search. You handle custody.
+[Alcove handles search. You handle custody.](../WHY.md)
 
 ## Non-claims
 

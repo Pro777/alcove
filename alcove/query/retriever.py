@@ -39,10 +39,13 @@ def query_hybrid(
     sem_ids = semantic.get("ids", [[]])[0]
     sem_docs = semantic.get("documents", [[]])[0]
     sem_dists = semantic.get("distances", [[]])[0]
+    sem_metas = semantic.get("metadatas", [[]])[0]
 
-    for doc_id, doc, dist in zip(sem_ids, sem_docs, sem_dists):
+    for i, (doc_id, doc, dist) in enumerate(zip(sem_ids, sem_docs, sem_dists, strict=True)):
+        meta = sem_metas[i] if i < len(sem_metas) else {}
         merged[doc_id] = {
             "document": doc,
+            "metadata": meta if isinstance(meta, dict) else {},
             "sem_dist": float(dist),
             "kw_dist": None,
         }
@@ -55,8 +58,14 @@ def query_hybrid(
         if doc_id in merged:
             merged[doc_id]["kw_dist"] = float(dist)
         else:
+            # Keyword-only result: synthesize metadata from doc_id
+            # doc_id format is "collection:filename:chunk_idx"
+            parts = doc_id.split(":", 1)
+            source = parts[1].rsplit(":", 1)[0] if len(parts) > 1 else doc_id
+            collection = parts[0] if len(parts) > 1 else "default"
             merged[doc_id] = {
                 "document": doc,
+                "metadata": {"source": source, "collection": collection},
                 "sem_dist": None,
                 "kw_dist": float(dist),
             }
@@ -67,13 +76,14 @@ def query_hybrid(
         sem_d = info["sem_dist"] if info["sem_dist"] is not None else 1.0
         kw_d = info["kw_dist"] if info["kw_dist"] is not None else 1.0
         avg_dist = (sem_d + kw_d) / 2.0
-        scored.append((doc_id, info["document"], avg_dist))
+        scored.append((doc_id, info["document"], info["metadata"], avg_dist))
 
-    scored.sort(key=lambda x: x[2])
+    scored.sort(key=lambda x: x[3])
     top = scored[:n_results]
 
     ids = [s[0] for s in top]
     documents = [s[1] for s in top]
-    distances = [round(s[2], 6) for s in top]
+    metadatas = [s[2] for s in top]
+    distances = [round(s[3], 6) for s in top]
 
-    return {"ids": [ids], "documents": [documents], "distances": [distances]}
+    return {"ids": [ids], "documents": [documents], "metadatas": [metadatas], "distances": [distances]}
