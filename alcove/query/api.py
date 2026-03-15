@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections as _collections
 import html
 import json
+import atexit
 import os
 import re
 import time
@@ -17,7 +18,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Query, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -41,7 +42,7 @@ if _METRICS_ENABLED:
     _active_requests = 0
     _error_count_4xx = 0
     _error_count_5xx = 0
-    _largest_view_chars = 0
+    _largest_view_bytes = 0
     _recent_times: _collections.deque = _collections.deque(maxlen=100)
     _access_log_file = None
 
@@ -50,8 +51,18 @@ if _METRICS_ENABLED:
         if _access_log_file is None:
             log_path = Path(_ACCESS_LOG_PATH)
             log_path.parent.mkdir(parents=True, exist_ok=True)
-            _access_log_file = open(log_path, "a", encoding="utf-8")
+            _access_log_file = open(log_path, "a", encoding="utf-8")  # noqa: SIM115
+            atexit.register(_close_access_log)
         return _access_log_file
+
+    def _close_access_log():
+        global _access_log_file
+        if _access_log_file is not None:
+            try:
+                _access_log_file.close()
+            except Exception:
+                pass
+            _access_log_file = None
 
     def _write_log(entry: dict):
         try:
@@ -63,13 +74,13 @@ if _METRICS_ENABLED:
 
     @app.middleware("http")
     async def _telemetry_middleware(request: Request, call_next):
-        global _total_requests, _active_requests, _error_count_4xx, _error_count_5xx, _largest_view_chars
+        global _total_requests, _active_requests, _error_count_4xx, _error_count_5xx, _largest_view_bytes
 
         _total_requests += 1
         _active_requests += 1
         t0 = time.monotonic()
         status = 500
-        doc_chars = None
+        doc_bytes = None
 
         try:
             response = await call_next(request)
@@ -83,9 +94,9 @@ if _METRICS_ENABLED:
                     else:
                         body_parts.append(chunk.encode("utf-8"))
                 body_bytes = b"".join(body_parts)
-                doc_chars = len(body_bytes)
-                if doc_chars > _largest_view_chars:
-                    _largest_view_chars = doc_chars
+                doc_bytes = len(body_bytes)
+                if doc_bytes > _largest_view_bytes:
+                    _largest_view_bytes = doc_bytes
 
                 from starlette.responses import Response as StarletteResponse
                 response = StarletteResponse(
@@ -96,16 +107,15 @@ if _METRICS_ENABLED:
                 )
 
             return response
-        except Exception:
+        except Exception as exc:
             status = 500
             _write_log({
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "method": request.method,
                 "path": request.url.path,
-                "params": dict(request.query_params),
                 "status": 500,
                 "ms": round((time.monotonic() - t0) * 1000, 1),
-                "error": traceback.format_exc(),
+                "error": type(exc).__name__,
             })
             raise
         finally:
@@ -122,12 +132,11 @@ if _METRICS_ENABLED:
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "method": request.method,
                 "path": request.url.path,
-                "params": dict(request.query_params),
                 "status": status,
                 "ms": elapsed_ms,
             }
-            if doc_chars is not None:
-                entry["doc_chars"] = doc_chars
+            if doc_bytes is not None:
+                entry["doc_bytes"] = doc_bytes
             _write_log(entry)
 
     @app.get("/metrics")
@@ -140,7 +149,7 @@ if _METRICS_ENABLED:
             "avg_response_time_ms": avg_ms,
             "error_count_4xx": _error_count_4xx,
             "error_count_5xx": _error_count_5xx,
-            "largest_view_chars": _largest_view_chars,
+            "largest_view_bytes": _largest_view_bytes,
             "uptime_seconds": uptime_s,
         }
 
@@ -216,7 +225,7 @@ def search(request: Request, q: str = "", k: int = 20, collections: str = "", mo
             metadatas = raw.get("metadatas", [[]])[0]
             distances = raw.get("distances", [[]])[0]
 
-            for doc, meta, dist in zip(documents, metadatas, distances):
+            for doc, meta, dist in zip(documents, metadatas, distances, strict=True):
                 snippets_raw = _extract_snippets(doc, q)
                 snippets_html = [_highlight(html.escape(s), q) for s in snippets_raw]
 
@@ -259,7 +268,11 @@ def view_document(request: Request, source: str = "", q: str = ""):
 
     doc_path = None
     for base in [clean_dir, raw_dir]:
-        candidate = Path(base) / source
+        base_resolved = Path(base).resolve()
+        candidate = (Path(base) / source).resolve()
+        # Path traversal containment check
+        if not str(candidate).startswith(str(base_resolved) + os.sep) and candidate != base_resolved:
+            raise HTTPException(status_code=403, detail="Access denied")
         if candidate.exists() and candidate.is_file():
             doc_path = candidate
             break

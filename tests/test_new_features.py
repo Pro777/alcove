@@ -446,8 +446,8 @@ class TestTelemetry:
         r = client.get("/metrics")
         assert r.status_code == 404
 
-    def test_telemetry_view_endpoint_tracks_doc_chars(self, tmp_path, monkeypatch):
-        """The middleware captures doc_chars for /view responses."""
+    def test_telemetry_view_endpoint_tracks_doc_bytes(self, tmp_path, monkeypatch):
+        """The middleware captures doc_bytes for /view responses."""
         log_file = tmp_path / "view.log"
         monkeypatch.setenv("ALCOVE_ACCESS_LOG", str(log_file))
         clean_dir = tmp_path / "clean"
@@ -466,14 +466,14 @@ class TestTelemetry:
         r = client.get("/view", params={"source": "sample.txt"})
         assert r.status_code == 200
 
-        # The /view call should have been logged with doc_chars
+        # The /view call should have been logged with doc_bytes
         # Make another request to force flush
         client.get("/health")
         if log_file.exists():
             entries = [json.loads(l) for l in log_file.read_text().strip().splitlines()]
             view_entries = [e for e in entries if e.get("path") == "/view"]
             if view_entries:
-                assert "doc_chars" in view_entries[0]
+                assert "doc_bytes" in view_entries[0]
 
 
 # ---------------------------------------------------------------------------
