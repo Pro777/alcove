@@ -193,6 +193,8 @@ class TestScoreFormula:
         r = client.get("/search", params={"q": "test", "mode": "semantic"})
         assert r.status_code == 200
         assert "ZeroDivisionError" not in r.text
+        # Verify the result was actually rendered, not silently dropped.
+        assert "a.txt" in r.text, "Result source should be rendered even when score is 0.0"
 
 
 # ---------------------------------------------------------------------------
