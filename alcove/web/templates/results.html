@@ -40,7 +40,7 @@
         <span class="results-query">&ldquo;{{ query | e }}&rdquo;</span>
       </div>
 
-      <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
+      <div class="results-list" role="region" aria-label="Search results" aria-live="polite" aria-atomic="false">
         {% for r in results %}
         {% set _fname = r.source.split('/')|last %}
         {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
@@ -71,12 +71,12 @@
           </div>
           <div class="result-snippets" id="snippets-{{ loop.index }}">
             {% for snippet in r.snippets %}
-            <p class="snippet-line">{{ snippet | safe }}</p>
+            <p class="snippet-line">{{ snippet }}</p>
             {% if not loop.last %}<span class="snippet-sep" aria-hidden="true">...</span>{% endif %}
             {% endfor %}
           </div>
           <div class="result-fulltext" id="fulltext-{{ loop.index }}" hidden>
-            <div class="result-chunk">{{ r.full_text | safe }}</div>
+            <div class="result-chunk">{{ r.full_text }}</div>
           </div>
           <button class="toggle-full-btn" type="button"
                   aria-expanded="false"

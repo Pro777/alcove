@@ -4,7 +4,15 @@
 
 {% block content %}
   <div class="view-header">
-    <a class="back-link" href="javascript:history.back()">&#8592; Back to results</a>
+    <a class="back-link" id="back-link" href="/search{% if query %}?q={{ query | urlencode }}{% endif %}">&#8592; Back to results</a>
+    <script>
+      (function(){
+        var el = document.getElementById('back-link');
+        if (el && document.referrer && document.referrer.indexOf('/search') !== -1) {
+          el.href = document.referrer;
+        }
+      })();
+    </script>
     <h2 class="view-title">{{ filename | e }}</h2>
     {% if query %}
     <span class="view-query">Highlighting: &ldquo;{{ query | e }}&rdquo;</span>

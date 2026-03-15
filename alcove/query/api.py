@@ -11,6 +11,7 @@ from fastapi import FastAPI, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from markupsafe import Markup
 from starlette.templating import Jinja2Templates
 import uvicorn
 
@@ -80,7 +81,7 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
             escaped = html.escape(doc)
             highlighted = _highlight(escaped, q)
             results.append({
-                "text": highlighted,
+                "text": Markup(highlighted),
                 "source": meta.get("source", "unknown") if isinstance(meta, dict) else "unknown",
                 "collection": meta.get("collection", "default") if isinstance(meta, dict) else "default",
                 "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),

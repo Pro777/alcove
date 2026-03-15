@@ -54,10 +54,10 @@
     <header class="site-header">
       <div class="container">
         <a href="/" class="logo-row" style="text-decoration:none;color:inherit;">
-          <div class="logo-mark" aria-hidden="true">{{ alcove_logo_text }}</div>
-          <h1 class="site-title">{{ alcove_title }}</h1>
+          <div class="logo-mark" aria-hidden="true">{{ alcove_logo_text | e }}</div>
+          <h1 class="site-title">{{ alcove_title | e }}</h1>
         </a>
-        <p class="site-tagline">{{ alcove_tagline }}</p>
+        <p class="site-tagline">{{ alcove_tagline | e }}</p>
       </div>
     </header>
 
@@ -71,7 +71,7 @@
       <div class="container">
         <p>
           <span class="footer-dot" aria-hidden="true"></span>
-          {{ alcove_footer_text }}
+          {{ alcove_footer_text | e }}
         </p>
       </div>
     </footer>
