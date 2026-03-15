@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="view-container">
+  <h1 class="view-filename">{{ filename | e }}</h1>
+  {% if error %}
+  <div class="view-error" role="alert">{{ error | e }}</div>
+  {% else %}
+  <div class="view-meta">
+    Showing {{ shown_lines }} of {{ total_lines }} lines{% if truncated %} (truncated){% endif %}
+  </div>
+  <table class="view-lines">
+    {% for line in lines %}
+    <tr class="view-line{% if line.blank %} blank{% endif %}">
+      <td class="line-num">{{ line.num }}</td>
+      <td class="line-text">{{ line.text | safe }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}
