@@ -25,7 +25,7 @@ def ingest_mirrulations(
     normalized = _apply_collection_name(records, collection_name=collection_name)
     if jsonl_out is not None:
         write_jsonl(normalized, jsonl_out)
-    return index_mirrulations_records(normalized)
+    return index_mirrulations_records(records, collection_name=collection_name)
 
 
 def load_mirrulations_records(
@@ -47,8 +47,12 @@ def load_mirrulations_records(
     return records
 
 
-def index_mirrulations_records(records: Iterable[dict]) -> int:
-    materialized = list(records)
+def index_mirrulations_records(
+    records: Iterable[dict],
+    *,
+    collection_name: str = MIRRULATIONS_COLLECTION,
+) -> int:
+    materialized = _apply_collection_name(records, collection_name=collection_name)
     if not materialized:
         return 0
 

@@ -69,18 +69,18 @@ def test_index_mirrulations_records_tags_requested_collection(monkeypatch):
             },
         }
     ]
-    indexed = index_mirrulations_records(records)
+    indexed = index_mirrulations_records(records, collection_name="regulatory_test_docs")
 
     assert indexed == 1
     assert captured["ids"] == ["comment-EPA-HQ-OAR-2023-0534-0002"]
-    assert captured["metadatas"][0]["collection"] == MIRRULATIONS_COLLECTION
+    assert captured["metadatas"][0]["collection"] == "regulatory_test_docs"
 
 
 def test_ingest_mirrulations_writes_requested_collection_to_jsonl(tmp_path, monkeypatch):
     text_dir = _make_text_tree(tmp_path, agency="EPA", docket_id="EPA-HQ-OAR-2023-0534")
     output_path = tmp_path / "mirrulations.jsonl"
 
-    monkeypatch.setattr("alcove.mirrulations.index_mirrulations_records", lambda records: len(list(records)))
+    monkeypatch.setattr("alcove.mirrulations.index_mirrulations_records", lambda records, collection_name: len(list(records)))
     indexed = ingest_mirrulations(
         source=text_dir.parent.parent,
         collection_name="regulatory_test_docs",
