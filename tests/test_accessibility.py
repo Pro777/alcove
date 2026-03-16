@@ -144,6 +144,11 @@ class TestResultsTemplate:
         assert "card-meta-" in html, \
             "card metadata IDs must follow the card-meta-N pattern"
 
+    def test_result_cards_are_clickable_links(self):
+        html = _read("results.html")
+        assert 'href="{{ r.href }}"' in html, "result cards must link to the source document"
+        assert 'target="_blank"' in html, "result cards should open documents without replacing search results"
+
 
 class TestStylesheet:
     """Tests against style.css for theme and contrast requirements."""

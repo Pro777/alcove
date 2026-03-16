@@ -9,29 +9,37 @@
 
   <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
     {% for r in results %}
-    {% set _fname = r.source.split('/')|last %}
-    {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
+    {% set ext = r.source.rsplit('.', 1)[1].upper() if '.' in r.source else '?' %}
     {% set score_pct = (r.score * 100) | round | int %}
     {% set card_id = "card-meta-" ~ loop.index %}
-    <div class="result-card" aria-describedby="{{ card_id }}">
+    <a
+      class="result-card"
+      href="{{ r.href }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-describedby="{{ card_id }}"
+      aria-label="Open {{ r.source | e }} in a new tab">
       <div class="result-meta" id="{{ card_id }}">
         <div class="result-file-info">
           <div class="file-type-icon" aria-label="{{ ext }} file" title="{{ ext }}">{{ ext }}</div>
-          <span class="result-filename" title="{{ r.source | e }}">{{ _fname | e }}</span>
-          {% if r.collection %}
-          <span class="collection-badge" title="Collection: {{ r.collection | e }}">{{ r.collection | e }}</span>
-          {% endif %}
-        </div>
-        <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
-          <span class="score-label">Score</span>
-          <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
+          <div class="result-file-copy">
+            <span class="result-filename" title="{{ r.source | e }}">{{ r.filename | safe }}</span>
+            <span class="result-source-path" title="{{ r.source | e }}">{{ r.source_display | safe }}</span>
           </div>
-          <span class="score-value">{{ "%.3f" | format(r.score) }}</span>
+        </div>
+        <div class="result-meta-actions">
+          <span class="result-open-indicator">Open document</span>
+          <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
+            <span class="score-label">Score</span>
+            <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
+              <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
+            </div>
+            <span class="score-value">{{ "%.3f" | format(r.score) }}</span>
+          </div>
         </div>
       </div>
       <div class="result-chunk">{{ r.text | safe }}</div>
-    </div>
+    </a>
     {% endfor %}
   </div>
 
