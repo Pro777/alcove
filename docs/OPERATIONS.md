@@ -31,6 +31,15 @@ alcove serve
 
 Files can also be uploaded via the web UI at `http://localhost:8000`.
 
+## Regulatory corpus pilot
+
+```bash
+alcove mirrulations-demo data/raw/mirrulations --agency EPA --collection mirrulations_docs
+alcove search "power plant emissions limits" --collection mirrulations_docs
+```
+
+See [Mirrulations Corpus](MIRRULATIONS_CORPUS.md) for the recommended text-only subset and sync pattern.
+
 ## Web UI and API
 
 ```bash
