@@ -16,6 +16,9 @@ def test_root_returns_html():
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
     assert "Alcove" in r.text
+    assert "Lead with the use cases" in r.text
+    assert "id=\"workspace\"" in r.text
+    assert "alcove seed-demo" in r.text
 
 
 def test_query_post_returns_json():

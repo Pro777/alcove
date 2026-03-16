@@ -1,143 +1,145 @@
 {% extends "base.html" %}
 
 {% block content %}
-  {% if doc_count == 0 %}
-  <div class="welcome-banner" role="status">
-    <h2>Welcome to Alcove</h2>
-    <p>Your index is empty. Upload documents below or run <code>alcove seed-demo</code> to get started.</p>
+  <div class="landing-shell">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Local-first retrieval for operators who keep the disk.</p>
+        <h2 class="hero-title">Index your world. Search it without handing it over.</h2>
+        <p class="hero-lede">
+          Alcove ingests a directory of documents, builds a local semantic index, and serves fast search on
+          localhost. No cloud account. No telemetry. No custody transfer.
+        </p>
+        <div class="hero-actions">
+          <a class="hero-link hero-link-primary" href="#workspace">Try the local workspace</a>
+          <a class="hero-link" href="https://pro777.github.io/alcove/demo.html" rel="noopener noreferrer">Watch the 30-second demo</a>
+        </div>
+        <div class="hero-status" role="status">
+          <span class="hero-status-pill">
+            {% if doc_count == 0 %}
+            Empty index
+            {% elif doc_count == 1 %}
+            1 indexed document
+            {% else %}
+            {{ doc_count }} indexed documents
+            {% endif %}
+          </span>
+          <span class="hero-status-copy">
+            Ingest, index, and query are separate stages, so you can swap storage and embedding backends without
+            changing the operator workflow.
+          </span>
+        </div>
+      </div>
+
+      <section class="hero-use-cases" aria-labelledby="use-cases-heading">
+        <div class="section-heading">
+          <p class="section-kicker">Lead with the use cases</p>
+          <h3 id="use-cases-heading">Built for collections that should stay on your machine</h3>
+        </div>
+        <div class="use-case-grid">
+          <article class="use-case-card">
+            <span class="use-case-label">Research</span>
+            <h4>Personal research libraries</h4>
+            <p>Search notes, PDFs, transcripts, and reference docs without pushing an archive into someone else's SaaS.</p>
+          </article>
+          <article class="use-case-card">
+            <span class="use-case-label">Archive</span>
+            <h4>Community memory projects</h4>
+            <p>Index oral histories, local newsletters, and donor files on hardware that the community already controls.</p>
+          </article>
+          <article class="use-case-card">
+            <span class="use-case-label">Records</span>
+            <h4>Municipal and institutional records</h4>
+            <p>Give staff a fast internal search surface for policies, minutes, and filings without introducing a hosted dependency.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section class="trust-strip" aria-label="Alcove workflow and trust model">
+      <article class="trust-card">
+        <span class="trust-step">01</span>
+        <h3>Ingest the corpus</h3>
+        <p>Point Alcove at a folder of PDFs, EPUBs, Markdown, CSV, JSON, DOCX, and plain text.</p>
+      </article>
+      <article class="trust-card">
+        <span class="trust-step">02</span>
+        <h3>Index it locally</h3>
+        <p>Chunks, embeddings, and vectors stay on disk. Plugins can swap in new extractors, embedders, and backends.</p>
+      </article>
+      <article class="trust-card">
+        <span class="trust-step">03</span>
+        <h3>Serve search on localhost</h3>
+        <p>Operators get a web interface that stays near the source material instead of sending it into a control plane.</p>
+      </article>
+    </section>
+
+    <section class="workspace-panel" id="workspace" aria-labelledby="workspace-heading">
+      <div class="workspace-header">
+        <div class="section-heading">
+          <p class="section-kicker">Try it locally</p>
+          <h3 id="workspace-heading">Search the index or drop in documents to seed it</h3>
+        </div>
+        <div class="quickstart-card" aria-label="Quick start commands">
+          <span class="quickstart-label">Quick start</span>
+          <code>pip install alcove-search</code>
+          <code>alcove seed-demo</code>
+          <code>alcove serve</code>
+        </div>
+      </div>
+
+      {% if doc_count == 0 %}
+      <div class="welcome-banner" role="status">
+        <h2>Start with the demo corpus or your own files</h2>
+        <p>Your index is empty. Upload documents below or run <code>alcove seed-demo</code> to get started.</p>
+      </div>
+      {% endif %}
+
+      <form class="search-form" method="GET" action="/search" role="search">
+        <label for="search-input" class="sr-only">Search your documents</label>
+        <div class="search-input-wrap">
+          <span class="search-icon" aria-hidden="true">&#128269;</span>
+          <input
+            id="search-input"
+            type="text"
+            name="q"
+            placeholder="Ask anything about your documents..."
+            autofocus
+            aria-label="Search your documents">
+        </div>
+        <button type="submit" class="search-btn">Search</button>
+      </form>
+
+      <div
+        class="upload-zone"
+        id="upload-zone"
+        role="button"
+        tabindex="0"
+        aria-label="Upload files - drop files here or press Enter to browse"
+        aria-describedby="formats-note">
+        <span class="upload-icon" aria-hidden="true">&#8679;</span>
+        <span class="upload-label">Drop files here or click to browse</span>
+        <input
+          type="file"
+          id="file-input"
+          accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
+          aria-label="Choose files to upload"
+          multiple
+          hidden>
+      </div>
+
+      <div
+        class="upload-status"
+        id="upload-status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy="false"></div>
+
+      <p class="formats-note" id="formats-note">
+        Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
+      </p>
+    </section>
   </div>
-  {% endif %}
-
-  <form class="search-form" method="GET" action="/search" role="search">
-    <label for="search-input" class="sr-only">Search your documents</label>
-    <div class="search-input-wrap">
-      <span class="search-icon" aria-hidden="true">&#128269;</span>
-      <input
-        id="search-input"
-        type="text"
-        name="q"
-        placeholder="Ask anything about your documents..."
-        autofocus
-        aria-label="Search your documents">
-    </div>
-    <input type="hidden" id="collections-hidden" name="collections" value="">
-
-    <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
-      <label class="mode-option">
-        <input type="radio" name="mode" value="semantic" checked>
-        <span class="mode-label">Semantic</span>
-      </label>
-      <label class="mode-option">
-        <input type="radio" name="mode" value="keyword">
-        <span class="mode-label">Keyword</span>
-      </label>
-      <label class="mode-option">
-        <input type="radio" name="mode" value="hybrid">
-        <span class="mode-label">Hybrid</span>
-      </label>
-    </fieldset>
-
-    <button type="submit" class="search-btn">Search</button>
-  </form>
-
-  <div class="collections-filter" id="collections-filter" role="group" aria-label="Filter by collection" style="display:none;">
-    <span class="collections-label">Collections:</span>
-    <div class="collections-checkboxes" id="collections-checkboxes"></div>
-  </div>
-
-  <div
-    class="upload-zone"
-    id="upload-zone"
-    role="button"
-    tabindex="0"
-    aria-label="Upload files: drop files here or press Enter to browse"
-    aria-describedby="formats-note">
-    <span class="upload-icon" aria-hidden="true">&#8679;</span>
-    <span class="upload-label">Drop files here or click to browse</span>
-    <input
-      type="file"
-      id="file-input"
-      accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
-      aria-label="Choose files to upload"
-      multiple
-      hidden>
-  </div>
-
-  <div
-    class="upload-status"
-    id="upload-status"
-    aria-live="polite"
-    aria-atomic="true"
-    aria-busy="false"></div>
-
-  <p class="formats-note" id="formats-note">
-    Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
-  </p>
-
-<style>
-  .search-mode-selector {
-    border: none;
-    padding: 0;
-    margin: 0.5rem 0 0 0;
-    display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-  }
-  .mode-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    cursor: pointer;
-    font-size: 0.85rem;
-    color: var(--text-secondary, #999);
-  }
-  .mode-option input[type="radio"] {
-    accent-color: var(--accent, #7c6cff);
-    margin: 0;
-  }
-  .mode-option input[type="radio"]:checked + .mode-label {
-    color: var(--text-primary, #fff);
-    font-weight: 500;
-  }
-  .mode-label {
-    transition: color 0.15s ease;
-  }
-</style>
-
-<script>
-(function () {
-  fetch("/collections")
-    .then(function (res) { return res.json(); })
-    .then(function (data) {
-      if (!data || !data.length) return;
-      var wrap = document.getElementById("collections-filter");
-      var box = document.getElementById("collections-checkboxes");
-      var hidden = document.getElementById("collections-hidden");
-      wrap.style.display = "";
-      for (var i = 0; i < data.length; i++) {
-        var c = data[i];
-        var label = document.createElement("label");
-        label.className = "collection-chip";
-        var cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.value = c.name;
-        cb.className = "collection-cb";
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
-        box.appendChild(label);
-      }
-      // On form submit, gather checked collections into the hidden field
-      var form = document.querySelector(".search-form");
-      form.addEventListener("submit", function () {
-        var checked = box.querySelectorAll("input:checked");
-        var vals = [];
-        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
-        hidden.value = vals.join(",");
-      });
-    })
-    .catch(function () { /* silently ignore if collections endpoint fails */ });
-})();
-</script>
 
 <script>
 (function () {
@@ -203,7 +205,7 @@
           if (data[j].status === "skipped") {
             skipped.push(data[j].filename + " (skipped: " + data[j].reason + ")");
           } else {
-            indexed.push(data[j].filename + " - " + data[j].chunks + " chunks");
+            indexed.push(data[j].filename + " \u2014 " + data[j].chunks + " chunks");
           }
         }
         var msg = "";
