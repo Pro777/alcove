@@ -8,7 +8,7 @@
   </div>
   {% endif %}
 
-  <form class="search-form" method="GET" action="/search" role="search">
+  <form class="search-form" method="GET" action="{{ base_url }}/search" role="search">
     <label for="search-input" class="sr-only">Search your documents</label>
     <div class="search-input-wrap">
       <span class="search-icon" aria-hidden="true">&#128269;</span>
@@ -42,7 +42,7 @@
 
   <div class="collections-filter" id="collections-filter" role="group" aria-label="Filter by collection" style="display:none;">
     <span class="collections-label">Collections:</span>
-    <div class="collections-checkboxes" id="collections-checkboxes"></div>
+    <div class="collections-chips" id="collections-chips" role="listbox" aria-label="Select collection"></div>
   </div>
 
   <div
@@ -104,36 +104,114 @@
   }
 </style>
 
+<style>
+  .collections-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.25rem 0;
+    margin-bottom: 0.5rem;
+  }
+  .collections-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #999);
+    white-space: nowrap;
+  }
+  .collections-chips {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .coll-tab {
+    font-size: 0.78rem;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border, rgba(200,200,255,0.2));
+    background: transparent;
+    color: var(--text-secondary, #999);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    line-height: 1.4;
+  }
+  .coll-tab:hover {
+    border-color: var(--accent, #7c6cff);
+    color: var(--text-primary, #fff);
+  }
+  .coll-tab.active {
+    background: var(--accent, #7c6cff);
+    border-color: var(--accent, #7c6cff);
+    color: #fff;
+    font-weight: 600;
+  }
+  .coll-tab .coll-count {
+    opacity: 0.7;
+    font-size: 0.72rem;
+    margin-left: 0.2rem;
+  }
+</style>
+
 <script>
 (function () {
-  fetch("/collections")
+  fetch("{{ base_url }}/collections")
     .then(function (res) { return res.json(); })
     .then(function (data) {
-      if (!data || !data.length) return;
+      if (!data || data.length < 2) return;  // Only show picker when >1 collection
       var wrap = document.getElementById("collections-filter");
-      var box = document.getElementById("collections-checkboxes");
+      var chips = document.getElementById("collections-chips");
       var hidden = document.getElementById("collections-hidden");
       wrap.style.display = "";
-      for (var i = 0; i < data.length; i++) {
-        var c = data[i];
-        var label = document.createElement("label");
-        label.className = "collection-chip";
-        var cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.value = c.name;
-        cb.className = "collection-cb";
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
-        box.appendChild(label);
+
+      var selected = "";  // "" = All
+
+      function renderTabs() {
+        chips.innerHTML = "";
+
+        // "All" tab
+        var allBtn = document.createElement("button");
+        allBtn.type = "button";
+        allBtn.className = "coll-tab" + (selected === "" ? " active" : "");
+        allBtn.textContent = "All";
+        allBtn.setAttribute("aria-pressed", selected === "" ? "true" : "false");
+        allBtn.addEventListener("click", function () {
+          selected = "";
+          hidden.value = "";
+          renderTabs();
+        });
+        chips.appendChild(allBtn);
+
+        for (var i = 0; i < data.length; i++) {
+          (function (c) {
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "coll-tab" + (selected === c.name ? " active" : "");
+            btn.setAttribute("aria-pressed", selected === c.name ? "true" : "false");
+            var nameSpan = document.createTextNode(c.name);
+            var countSpan = document.createElement("span");
+            countSpan.className = "coll-count";
+            countSpan.textContent = "(" + c.doc_count + ")";
+            btn.appendChild(nameSpan);
+            btn.appendChild(countSpan);
+            btn.addEventListener("click", function () {
+              selected = c.name;
+              hidden.value = c.name;
+              renderTabs();
+            });
+            chips.appendChild(btn);
+          })(data[i]);
+        }
       }
-      // On form submit, gather checked collections into the hidden field
-      var form = document.querySelector(".search-form");
-      form.addEventListener("submit", function () {
-        var checked = box.querySelectorAll("input:checked");
-        var vals = [];
-        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
-        hidden.value = vals.join(",");
-      });
+
+      renderTabs();
+
+      // Restore selection from URL if present
+      var urlParams = new URLSearchParams(window.location.search);
+      var urlColl = urlParams.get("collections");
+      if (urlColl) {
+        selected = urlColl.split(",")[0] || "";
+        hidden.value = selected;
+        renderTabs();
+      }
     })
     .catch(function () { /* silently ignore if collections endpoint fails */ });
 })();
@@ -184,7 +262,7 @@
     }
     status.textContent = "Uploading...";
     status.setAttribute("aria-busy", "true");
-    fetch("/ingest", { method: "POST", body: formData })
+    fetch("{{ base_url }}/ingest", { method: "POST", body: formData })
       .then(function (res) {
         if (!res.ok) {
           return res.json().then(function (err) {

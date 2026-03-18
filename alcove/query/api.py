@@ -22,6 +22,17 @@ app = FastAPI(title="Alcove")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+
+def _root_path() -> str:
+    """Return the URL prefix configured via ALCOVE_ROOT_PATH (e.g. '/demos')."""
+    return os.getenv("ALCOVE_ROOT_PATH", "").rstrip("/")
+
+
+def _tpl(ctx: dict) -> dict:
+    """Merge template context with the base_url global."""
+    ctx.setdefault("base_url", _root_path())
+    return ctx
+
 SUPPORTED_EXTENSIONS = {
     ".txt", ".pdf", ".epub",
     ".html", ".htm",
@@ -53,7 +64,7 @@ def root(request: Request):
         doc_count = backend.count()
     except Exception:
         doc_count = 0
-    return templates.TemplateResponse("search.html", {"request": request, "doc_count": doc_count})
+    return templates.TemplateResponse("search.html", _tpl({"request": request, "doc_count": doc_count}))
 
 
 @app.get("/search", response_class=HTMLResponse)
@@ -88,7 +99,7 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
 
     return templates.TemplateResponse(
         "results.html",
-        {"request": request, "query": q, "results": results},
+        _tpl({"request": request, "query": q, "results": results}),
     )
 
 
