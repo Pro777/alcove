@@ -38,6 +38,8 @@ This is the foundation. Everything below builds on it.
 
 The [plugin API](ARCHITECTURE.md#plugin-system) exposes three extension points: extractors (`alcove.extractors`), vector backends (`alcove.backends`), and embedders (`alcove.embedders`). Below are concrete candidates for each, with the libraries that would implement them and how they wire into the pipeline.
 
+**Offline by default.** Alcove makes no outbound network calls unless the operator explicitly selects a cloud plugin. All built-in extractors, embedders, and backends run entirely on the operator's hardware. Selecting a cloud embedder (OpenAI, Cohere) or a cloud backend (Pinecone) changes that: data leaves the machine. This is an operator decision, not a default. Each cloud candidate in the tables below calls this out explicitly.
+
 ### Extractor plugins
 
 Extractors receive a file path and return a list of text chunks. The entry point maps a file extension to a callable: `rtf = my_plugin:extract_rtf`. Plugins override builtins on name collision.
@@ -82,6 +84,8 @@ All three extension points use Python entry points — no framework dependency, 
 - **Extractor**: `(path: str | Path) -> list[str]` — return plain-text chunks. Raise on unreadable files.
 - **Embedder**: class with `embed(texts: list[str]) -> list[list[float]]` — must be deterministic per input if possible; document non-determinism.
 - **Backend**: class with `add(chunks, embeddings, metadatas)`, `query(embedding, k, **filters) -> list[dict]`, `count() -> int`. Match the existing `VectorBackend` ABC in `alcove/index/backend.py`.
+
+**Authentication is out of scope for the plugin system.** The plugin interfaces handle data flow only — extraction, embedding, storage. They provide no authentication mechanism and make no trust decisions. When exposing Alcove endpoints (e.g., the local API or a future MCP surface), authentication must be enforced at the deployment boundary: a reverse proxy, network policy, or OS-level access control. This applies to all three extension types; no plugin implementation should assume the caller is authenticated.
 
 Mid-term roadmap work (lifecycle hooks, query-time transformations) will expand this surface. New groups will follow the same entry-point pattern.
 
