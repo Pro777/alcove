@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main id="main-content">
+  <div class="demos-header">
+    <h2 class="demos-title">Demo corpora</h2>
+    <p class="demos-subtitle">Explore alcove running on real-world and synthetic datasets.</p>
+  </div>
+
+  <ul class="demo-grid" role="list">
+    {% for demo in demos %}
+    <li class="demo-card {% if demo.status == 'live' %}demo-card--live{% else %}demo-card--soon{% endif %}">
+      <div class="demo-card__body">
+        <div class="demo-card__header">
+          <h3 class="demo-card__name">{{ demo.name }}</h3>
+          {% if demo.status == 'live' %}
+          <span class="demo-badge demo-badge--live" aria-label="Live">Live</span>
+          {% else %}
+          <span class="demo-badge demo-badge--soon" aria-label="Coming soon">Coming soon</span>
+          {% endif %}
+        </div>
+        <p class="demo-card__desc">{{ demo.description }}</p>
+        <dl class="demo-card__meta">
+          <div class="demo-meta-row">
+            <dt>Source</dt>
+            <dd>{{ demo.source }}</dd>
+          </div>
+          {% if demo.date_range %}
+          <div class="demo-meta-row">
+            <dt>Date range</dt>
+            <dd>{{ demo.date_range }}</dd>
+          </div>
+          {% endif %}
+          {% if demo.doc_count is not none %}
+          <div class="demo-meta-row">
+            <dt>Documents</dt>
+            <dd>{{ demo.doc_count }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+      {% if demo.status == 'live' %}
+      <a class="demo-card__launch" href="/?collection={{ demo.collection | urlencode }}" aria-label="Launch {{ demo.name }} demo">
+        Launch <span aria-hidden="true">→</span>
+      </a>
+      {% else %}
+      <span class="demo-card__launch demo-card__launch--disabled" aria-disabled="true">
+        Not yet deployed
+      </span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</main>
+{% endblock %}

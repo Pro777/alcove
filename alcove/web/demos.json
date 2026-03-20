@@ -1,0 +1,26 @@
+[
+  {
+    "id": "congress",
+    "name": "Congress",
+    "description": "Semantic search over federal bill summaries from the 113th–118th Congress. Find legislation by concept, not just keyword.",
+    "collection": "congress_summaries",
+    "source": "congress.gov",
+    "date_range": "2013–2024"
+  },
+  {
+    "id": "continuity",
+    "name": "Continuity Professionals",
+    "description": "Synthetic film production corpus — call sheets, daily reports, prop lists, and shoot schedules for semantic search.",
+    "collection": "continuity_professionals",
+    "source": "Synthetic (alcove)",
+    "date_range": "2024"
+  },
+  {
+    "id": "tcm",
+    "name": "TCM Events",
+    "description": "Twin Cities Marathon event corpus — race schedules, participant guides, and results archives.",
+    "collection": "tcm_events",
+    "source": "tcmevents.org",
+    "date_range": "2010–2024"
+  }
+]

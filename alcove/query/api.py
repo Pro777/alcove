@@ -68,6 +68,58 @@ def root(request: Request):
     return templates.TemplateResponse("search.html", _tpl({"request": request, "doc_count": doc_count}))
 
 
+@app.get("/demos", response_class=HTMLResponse)
+def demos_index(request: Request):
+    """Landing page listing all demo corpora with live/coming-soon status."""
+    import json as _json
+
+    demos_config_path = Path(__file__).resolve().parents[1] / "web" / "demos.json"
+    try:
+        raw_demos: list[dict] = _json.loads(demos_config_path.read_text(encoding="utf-8"))
+    except Exception:
+        raw_demos = []
+
+    # Resolve live collections from the backend
+    live_collections: set[str] = set()
+    try:
+        from alcove.index.backend import get_backend
+        from alcove.index.embedder import get_embedder
+        backend = get_backend(get_embedder())
+        for col in backend.list_collections():
+            name = col["name"] if isinstance(col, dict) else str(col)
+            live_collections.add(name)
+    except Exception:
+        pass
+
+    demos = []
+    for d in raw_demos:
+        col = d.get("collection", "")
+        is_live = col in live_collections
+        doc_count: Optional[int] = None
+        if is_live:
+            try:
+                from alcove.index.backend import list_chromadb_collections
+                for c in list_chromadb_collections():
+                    if c["name"] == col:
+                        doc_count = c["count"]
+                        break
+            except Exception:
+                pass
+        demos.append({
+            **d,
+            "status": "live" if is_live else "coming_soon",
+            "doc_count": doc_count,
+        })
+
+    return templates.TemplateResponse(
+        "demos.html",
+        _tpl({
+            "request": request,
+            "demos": demos,
+        }),
+    )
+
+
 @app.get("/search", response_class=HTMLResponse)
 def search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
     _COLL_RE = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
