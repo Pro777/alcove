@@ -190,6 +190,106 @@ class TestMultiChromaBackend:
         for meta in metas:
             assert "collection" in meta
 
+    def test_add_routes_docs_by_metadata_collection(self, embedder, tmp_path, monkeypatch):
+        """add() routes each document to the physical collection from metadata['collection']."""
+        chroma_path = str(tmp_path / "chroma")
+        monkeypatch.setenv("CHROMA_PATH", chroma_path)
+        monkeypatch.setenv("ALCOVE_MULTI_COLLECTION", "1")
+        from alcove.index.backend import MultiChromaBackend
+        backend = MultiChromaBackend(embedder)
+
+        vecs = embedder.embed(["doc about poems", "doc about notes"])
+        backend.add(
+            ids=["poems-0", "notes-0"],
+            embeddings=vecs,
+            documents=["doc about poems", "doc about notes"],
+            metadatas=[
+                {"source": "a.txt", "collection": "poems"},
+                {"source": "b.txt", "collection": "notes"},
+            ],
+        )
+
+        colls = {c["name"]: c["doc_count"] for c in backend.list_collections()}
+        assert "poems" in colls
+        assert "notes" in colls
+        assert colls["poems"] == 1
+        assert colls["notes"] == 1
+
+    def test_query_skips_empty_collections(self, embedder, tmp_path, monkeypatch):
+        """query() skips collections with zero documents and returns results from populated ones."""
+        import chromadb
+        from chromadb.config import Settings
+        chroma_path = str(tmp_path / "chroma")
+        client = chromadb.PersistentClient(path=chroma_path, settings=Settings(anonymized_telemetry=False))
+        _seed_collection(client, "filled", embedder, ["content here"])
+        client.get_or_create_collection(name="empty_col")  # zero docs
+
+        monkeypatch.setenv("CHROMA_PATH", chroma_path)
+        monkeypatch.setenv("ALCOVE_MULTI_COLLECTION", "1")
+        from alcove.index.backend import MultiChromaBackend
+        backend = MultiChromaBackend(embedder)
+
+        q_vec = embedder.embed(["content"])[0]
+        result = backend.query(q_vec, k=5)
+        filled_ids = [i for i in result["ids"][0] if i.startswith("filled")]
+        assert len(filled_ids) >= 1
+
+    def test_get_filtered_collections_skips_broken(self, embedder, tmp_path, monkeypatch):
+        """_get_filtered_collections() silently skips any collection where get_collection raises."""
+        import chromadb
+        from chromadb.config import Settings
+        from unittest.mock import patch
+        chroma_path = str(tmp_path / "chroma")
+        client = chromadb.PersistentClient(path=chroma_path, settings=Settings(anonymized_telemetry=False))
+        _seed_collection(client, "good", embedder, ["document"])
+        _seed_collection(client, "bad", embedder, ["another"])
+
+        monkeypatch.setenv("CHROMA_PATH", chroma_path)
+        monkeypatch.setenv("ALCOVE_MULTI_COLLECTION", "1")
+        from alcove.index.backend import MultiChromaBackend
+        backend = MultiChromaBackend(embedder)
+
+        original_get = backend._client.get_collection
+
+        def patched_get(name):
+            if name == "bad":
+                raise RuntimeError("collection broken")
+            return original_get(name)
+
+        with patch.object(backend._client, "get_collection", side_effect=patched_get):
+            cols = backend._get_filtered_collections(["good", "bad"])
+        assert len(cols) == 1
+        assert cols[0].name == "good"
+
+    def test_get_all_collections_skips_broken(self, embedder, tmp_path, monkeypatch):
+        """_get_all_collections() silently skips any collection where get_collection raises."""
+        import chromadb
+        from chromadb.config import Settings
+        from unittest.mock import patch
+        chroma_path = str(tmp_path / "chroma")
+        client = chromadb.PersistentClient(path=chroma_path, settings=Settings(anonymized_telemetry=False))
+        _seed_collection(client, "alpha", embedder, ["document one"])
+        _seed_collection(client, "beta", embedder, ["document two"])
+
+        monkeypatch.setenv("CHROMA_PATH", chroma_path)
+        monkeypatch.setenv("ALCOVE_MULTI_COLLECTION", "1")
+        from alcove.index.backend import MultiChromaBackend
+        backend = MultiChromaBackend(embedder)
+
+        original_get = backend._client.get_collection
+
+        def patched_get(name):
+            if name == "beta":
+                raise RuntimeError("broken")
+            return original_get(name)
+
+        with patch.object(backend._client, "get_collection", side_effect=patched_get):
+            # list_collections and count use _get_all_collections
+            colls = backend.list_collections()
+        names = {c["name"] for c in colls}
+        assert "alpha" in names
+        assert "beta" not in names
+
 
 class TestMultiRootBackend:
     """Tests for MultiRootBackend — one ChromaDB dir per subdirectory."""
@@ -309,6 +409,109 @@ class TestMultiRootBackend:
         result = backend.query(q_vec, k=5)
         for meta in result["metadatas"][0]:
             assert "collection" in meta
+
+    def test_init_falls_back_to_bare_name_when_physical_name_absent(self, embedder, tmp_path, monkeypatch):
+        """MultiRootBackend uses bare collection name when physical (suffixed) name is absent.
+
+        Simulates a ChromaDB directory created with the plain name but queried
+        with EMBEDDER set to a value that would produce a suffixed physical name.
+        The backend should find the bare name as fallback.
+        """
+        import chromadb
+        from chromadb.config import Settings
+        root = tmp_path / "collections"
+        chroma_dir = root / "mydata" / "chroma"
+        chroma_dir.mkdir(parents=True)
+
+        # Create collection with bare name "mydata" (not "mydata_st")
+        client = chromadb.PersistentClient(path=str(chroma_dir), settings=Settings(anonymized_telemetry=False))
+        col = client.get_or_create_collection(name="mydata")
+        vecs = embedder.embed(["some document"])
+        col.upsert(ids=["mydata-0"], embeddings=vecs, documents=["some document"], metadatas=[{"source": "f.txt"}])
+
+        # Set embedder to sentence-transformers so physical_name = "mydata_st" != "mydata"
+        monkeypatch.setenv("ALCOVE_DEMO_ROOT", str(root))
+        monkeypatch.setenv("EMBEDDER", "sentence-transformers")
+        from alcove.index.backend import MultiRootBackend
+        backend = MultiRootBackend(embedder)
+        # Should find "mydata" via the elif fallback
+        colls = backend.list_collections()
+        assert any(c["name"] == "mydata" for c in colls)
+
+    def test_query_no_matching_collections_returns_empty(self, embedder, tmp_path, monkeypatch):
+        """Querying with a filter that matches no collections returns empty results."""
+        root = tmp_path / "collections"
+        self._seed_root(root, embedder, {"mnhs": ["some document"]})
+        monkeypatch.setenv("ALCOVE_DEMO_ROOT", str(root))
+        from alcove.index.backend import MultiRootBackend
+        backend = MultiRootBackend(embedder)
+
+        q_vec = embedder.embed(["test"])[0]
+        result = backend.query(q_vec, k=5, collections=["nonexistent"])
+        assert result["ids"] == [[]]
+        assert result["documents"] == [[]]
+        assert result["distances"] == [[]]
+
+    def test_init_skips_subdir_with_unrelated_collection_name(self, embedder, tmp_path, monkeypatch):
+        """MultiRootBackend skips a subdir whose ChromaDB collection name doesn't match the subdir name."""
+        import chromadb
+        from chromadb.config import Settings
+        root = tmp_path / "collections"
+
+        # Create "mydata" subdir with a collection named "something_unrelated"
+        chroma_dir = root / "mydata" / "chroma"
+        chroma_dir.mkdir(parents=True)
+        client = chromadb.PersistentClient(path=str(chroma_dir), settings=Settings(anonymized_telemetry=False))
+        col = client.get_or_create_collection(name="something_unrelated")
+        vecs = embedder.embed(["test"])
+        col.upsert(ids=["doc-0"], embeddings=vecs, documents=["test"], metadatas=[{"source": "f.txt"}])
+
+        # Also create a normal subdir that should work
+        chroma_good = root / "good" / "chroma"
+        chroma_good.mkdir(parents=True)
+        client_g = chromadb.PersistentClient(path=str(chroma_good), settings=Settings(anonymized_telemetry=False))
+        col_g = client_g.get_or_create_collection(name="good")
+        col_g.upsert(ids=["g-0"], embeddings=vecs, documents=["good doc"], metadatas=[{"source": "g.txt"}])
+
+        monkeypatch.setenv("ALCOVE_DEMO_ROOT", str(root))
+        from alcove.index.backend import MultiRootBackend
+        backend = MultiRootBackend(embedder)
+
+        # "mydata" should be skipped (else: continue), "good" should be included
+        names = {c["name"] for c in backend.list_collections()}
+        assert "mydata" not in names
+        assert "good" in names
+
+    def test_query_skips_empty_sub_collections(self, embedder, tmp_path, monkeypatch):
+        """MultiRootBackend.query skips subdirectory collections with zero documents."""
+        import chromadb
+        from chromadb.config import Settings
+        root = tmp_path / "collections"
+
+        # Create "filled" with real docs
+        chroma_filled = root / "filled" / "chroma"
+        chroma_filled.mkdir(parents=True)
+        client_f = chromadb.PersistentClient(path=str(chroma_filled), settings=Settings(anonymized_telemetry=False))
+        col_f = client_f.get_or_create_collection(name="filled")
+        vecs = embedder.embed(["real content"])
+        col_f.upsert(ids=["filled-0"], embeddings=vecs, documents=["real content"], metadatas=[{"source": "f.txt"}])
+
+        # Create "empty" dir with a collection but zero documents
+        chroma_empty = root / "empty" / "chroma"
+        chroma_empty.mkdir(parents=True)
+        client_e = chromadb.PersistentClient(path=str(chroma_empty), settings=Settings(anonymized_telemetry=False))
+        client_e.get_or_create_collection(name="empty")  # no docs
+
+        monkeypatch.setenv("ALCOVE_DEMO_ROOT", str(root))
+        from alcove.index.backend import MultiRootBackend
+        backend = MultiRootBackend(embedder)
+
+        q_vec = embedder.embed(["content"])[0]
+        result = backend.query(q_vec, k=5)
+        # Should get results from "filled", none from "empty"
+        all_ids = result["ids"][0]
+        assert any(i.startswith("filled") for i in all_ids)
+        assert not any(i.startswith("empty") for i in all_ids)
 
 
 class TestGetBackendMultiCollectionActivation:

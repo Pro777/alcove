@@ -259,3 +259,50 @@ class TestCLIModeFlag:
         )
         assert result.returncode == 0
         assert "--mode" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Retriever direct calls (covers alcove/query/retriever.py lines 18-20)
+# ---------------------------------------------------------------------------
+
+class TestKeywordIndexBlankLines:
+    def test_blank_lines_in_chunks_file_are_skipped(self, tmp_path):
+        """KeywordIndex gracefully skips blank lines in the chunks JSONL file."""
+        import json
+        path = tmp_path / "chunks.jsonl"
+        chunks = [
+            {"id": "doc1", "text": "quick brown fox", "source": "a.txt"},
+            "",  # blank line
+            {"id": "doc2", "text": "lazy dog", "source": "b.txt"},
+        ]
+        with path.open("w") as fh:
+            for c in chunks:
+                fh.write((json.dumps(c) if isinstance(c, dict) else c) + "\n")
+
+        idx = KeywordIndex(chunks_file=str(path))
+        result = idx.search("fox", k=2)
+        assert len(result["ids"][0]) >= 1
+        assert result["ids"][0][0] == "doc1"
+
+
+class TestRetrieverDirect:
+    def test_query_keyword_direct_call(self, tmp_path, monkeypatch):
+        """Calling query_keyword from retriever module exercises the full import path."""
+        chunks_path = tmp_path / "chunks.jsonl"
+        import json
+        chunks = [
+            {"id": "a:doc1:0", "text": "the quick brown fox", "source": "doc1.txt"},
+            {"id": "a:doc2:0", "text": "python programming", "source": "doc2.txt"},
+        ]
+        with chunks_path.open("w") as fh:
+            for c in chunks:
+                fh.write(json.dumps(c) + "\n")
+        monkeypatch.setenv("CHUNKS_FILE", str(chunks_path))
+
+        from alcove.query.retriever import query_keyword
+        result = query_keyword("fox", n_results=2)
+
+        assert "ids" in result
+        assert "documents" in result
+        assert "distances" in result
+        assert len(result["ids"]) == 1
