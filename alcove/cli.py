@@ -12,6 +12,8 @@ from alcove import __version__
 
 def cmd_serve(args):
     import uvicorn
+    if args.root_path:
+        os.environ["ALCOVE_ROOT_PATH"] = args.root_path.rstrip("/")
     from alcove.query.api import app
     uvicorn.run(app, host=args.host, port=args.port)
 
@@ -155,6 +157,11 @@ def main():
     p_serve = sub.add_parser("serve", help="Start web UI and API server")
     p_serve.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1; use 0.0.0.0 to expose on network)")
     p_serve.add_argument("--port", type=int, default=8000)
+    p_serve.add_argument(
+        "--root-path", default="",
+        help="URL prefix when served behind a reverse proxy (e.g. /demos). "
+             "Sets ALCOVE_ROOT_PATH env var.",
+    )
     p_serve.set_defaults(func=cmd_serve)
 
     # ingest
