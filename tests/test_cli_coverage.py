@@ -308,3 +308,143 @@ class TestQueryCli:
 
 
 import os
+
+
+# -----------------------------------------------------------------------
+# alcove.cli — gaps: cmd_serve, cmd_collections, cmd_seed_demo
+# -----------------------------------------------------------------------
+
+class TestCmdServe:
+    """Tests for cmd_serve."""
+
+    def test_cmd_serve_calls_uvicorn(self):
+        import argparse
+        from unittest.mock import patch
+        from alcove.cli import cmd_serve
+        args = argparse.Namespace(host="127.0.0.1", port=8000, root_path="")
+        with patch("uvicorn.run") as mock_run:
+            cmd_serve(args)
+        mock_run.assert_called_once()
+
+    def test_cmd_serve_sets_root_path_env(self, monkeypatch):
+        import argparse
+        from unittest.mock import patch
+        from alcove.cli import cmd_serve
+        monkeypatch.delenv("ALCOVE_ROOT_PATH", raising=False)
+        args = argparse.Namespace(host="127.0.0.1", port=8000, root_path="/demos/")
+        with patch("uvicorn.run"):
+            cmd_serve(args)
+        assert os.environ.get("ALCOVE_ROOT_PATH") == "/demos"
+
+
+class TestCmdCollections:
+    """Tests for cmd_collections."""
+
+    def test_no_collections_prints_message(self, capsys, tmp_path, monkeypatch):
+        import argparse
+        from alcove.cli import cmd_collections
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.delenv("ALCOVE_DEMO_ROOT", raising=False)
+        monkeypatch.delenv("ALCOVE_MULTI_COLLECTION", raising=False)
+        monkeypatch.delenv("CHROMA_COLLECTION", raising=False)
+        cmd_collections(argparse.Namespace())
+        out = capsys.readouterr().out
+        assert "No collections found." in out
+
+    def test_with_collections_prints_names_and_counts(self, capsys):
+        import argparse
+        from unittest.mock import MagicMock, patch
+        from alcove.cli import cmd_collections
+        mock_backend = MagicMock()
+        mock_backend.list_collections.return_value = [
+            {"name": "poems", "doc_count": 5},
+            {"name": "notes", "doc_count": 2},
+        ]
+        with patch("alcove.index.backend.get_backend", return_value=mock_backend):
+            with patch("alcove.index.embedder.get_embedder"):
+                cmd_collections(argparse.Namespace())
+        out = capsys.readouterr().out
+        assert "poems" in out
+        assert "5" in out
+        assert "notes" in out
+
+    def test_backend_exception_falls_back_to_no_collections(self, capsys):
+        import argparse
+        from unittest.mock import patch
+        from alcove.cli import cmd_collections
+        with patch("alcove.index.backend.get_backend", side_effect=RuntimeError("db gone")):
+            with patch("alcove.index.embedder.get_embedder"):
+                cmd_collections(argparse.Namespace())
+        assert "No collections found." in capsys.readouterr().out
+
+
+class TestCmdSeedDemo:
+    """Tests for cmd_seed_demo."""
+
+    def test_no_scripts_dir_exits(self, capsys, tmp_path, monkeypatch):
+        import argparse
+        from alcove.cli import cmd_seed_demo
+        monkeypatch.chdir(tmp_path)  # no scripts/ dir here
+        with pytest.raises(SystemExit) as exc:
+            cmd_seed_demo(argparse.Namespace())
+        assert exc.value.code == 1
+        assert "scripts/" in capsys.readouterr().err
+
+    def test_missing_script_exits(self, tmp_path, monkeypatch):
+        import argparse
+        from alcove.cli import cmd_seed_demo
+        (tmp_path / "scripts").mkdir()
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(SystemExit) as exc:
+            cmd_seed_demo(argparse.Namespace())
+        assert exc.value.code == 1
+
+    def test_runs_scripts_when_present(self, tmp_path, monkeypatch):
+        import argparse
+        from unittest.mock import patch
+        from alcove.cli import cmd_seed_demo
+        scripts_dir = tmp_path / "scripts"
+        scripts_dir.mkdir()
+        for name in ["fetch_seed_corpus.py", "ingest_seed_demo.py", "build_seed_index.py"]:
+            (scripts_dir / name).write_text("# placeholder")
+        monkeypatch.chdir(tmp_path)
+        with patch("subprocess.check_call") as mock_call:
+            cmd_seed_demo(argparse.Namespace())
+        assert mock_call.call_count == 3
+
+
+# -----------------------------------------------------------------------
+# alcove.__main__ entry point
+# -----------------------------------------------------------------------
+
+class TestMainModuleEntry:
+    """Tests for python -m alcove entry point."""
+
+    def test_python_m_alcove_invokes_main(self):
+        import runpy
+        from unittest.mock import patch
+        with patch("alcove.cli.main") as mock_main:
+            runpy.run_module("alcove", run_name="__main__")
+        mock_main.assert_called_once()
+
+
+# -----------------------------------------------------------------------
+# alcove.query.cli — gaps: legacy bare query path, _list_collections exception
+# -----------------------------------------------------------------------
+
+class TestQueryCliGaps:
+    def test_legacy_bare_query_falls_to_else_branch(self):
+        """No subcommand sets command=None, enters the legacy else branch."""
+        from alcove.query.cli import main
+        with patch("sys.argv", ["alcove-query"]):
+            with pytest.raises(SystemExit):
+                # Empty query triggers parser.error, but the else branch is entered
+                main()
+
+    def test_list_collections_exception_prints_no_collections(self, capsys):
+        from unittest.mock import patch
+        from alcove.query.cli import _list_collections
+        with patch("alcove.index.backend.get_backend", side_effect=RuntimeError("db gone")):
+            with patch("alcove.index.embedder.get_embedder"):
+                _list_collections()
+        assert "No collections found." in capsys.readouterr().out

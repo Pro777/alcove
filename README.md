@@ -102,4 +102,4 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 
 ---
 
-*The word [alcove](https://en.wikipedia.org/wiki/Alcove) comes from Arabic* القبة *(al-qubbah) — "the vault." An enclosed, protected space for things that matter.*
+*The word [alcove](https://en.wikipedia.org/wiki/Alcove_(architecture)) comes from Arabic* القبة *(al-qubbah) — "the vault." An enclosed, protected space for things that matter.*

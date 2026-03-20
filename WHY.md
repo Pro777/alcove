@@ -1,6 +1,6 @@
 # Why Alcove exists
 
-*The word [alcove](https://en.wikipedia.org/wiki/Alcove) comes from Arabic* القبة *(al-qubbah) — "the vault" — via Spanish* alcoba. *An enclosed, protected space for things that matter. That is the product.*
+*The word [alcove](https://en.wikipedia.org/wiki/Alcove_(architecture)) comes from Arabic* القبة *(al-qubbah) — "the vault" — via Spanish* alcoba. *An enclosed, protected space for things that matter. That is the product.*
 
 ## Index your world.
 

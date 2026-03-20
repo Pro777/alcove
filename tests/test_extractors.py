@@ -111,3 +111,27 @@ def test_pipeline_dispatch_includes_md(tmp_path):
     assert n >= 1
     records = [json.loads(line) for line in out.read_text().splitlines()]
     assert any("Local retrieval is fast." in r["chunk"] for r in records)
+
+
+def test_extract_tsv_tab_separated(tmp_path):
+    """extract_tsv correctly parses tab-delimited files."""
+    f = tmp_path / "data.tsv"
+    f.write_text("name\tvalue\nalice\t42\nbob\t100\n")
+    from alcove.ingest.extractors import extract_tsv
+    result = extract_tsv(f)
+    assert "alice" in result
+    assert "42" in result
+    assert "bob" in result
+
+
+def test_extract_docx_raises_helpful_import_error(tmp_path):
+    """extract_docx raises an ImportError with install instructions when python-docx is absent."""
+    import sys
+    from unittest.mock import patch
+    f = tmp_path / "test.docx"
+    f.write_bytes(b"fake content")
+    # Simulate python-docx not being installed by hiding it from the import system
+    with patch.dict(sys.modules, {"docx": None}):
+        from alcove.ingest.extractors import extract_docx
+        with pytest.raises(ImportError, match="python-docx is required"):
+            extract_docx(f)

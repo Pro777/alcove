@@ -104,3 +104,92 @@ class TestRootPathTemplate:
             assert 'href="/demos/"' in r.text
         finally:
             del os.environ["ALCOVE_ROOT_PATH"]
+
+
+# ---------------------------------------------------------------------------
+# Coverage gaps
+# ---------------------------------------------------------------------------
+
+def test_demos_index_returns_html():
+    """GET /demos renders the demos landing page with content from demos.json."""
+    r = client.get("/demos")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    # demos.json contains "Congress" — verify the template rendered the catalog
+    assert "Congress" in r.text
+
+
+def test_search_invalid_collection_name_returns_422():
+    """GET /search with an invalid collection name (special chars) returns 422."""
+    r = client.get("/search", params={"q": "test", "collections": "bad!name"})
+    assert r.status_code == 422
+    assert "Invalid collection name" in r.json()["detail"]
+
+
+def test_ingest_disabled_in_demo_mode(monkeypatch):
+    """POST /ingest returns 403 when ALCOVE_DEMO_ROOT is set (read-only demo mode)."""
+    monkeypatch.setenv("ALCOVE_DEMO_ROOT", "/some/readonly/path")
+    r = client.post(
+        "/ingest",
+        files={"files": ("sample.txt", b"hello world", "text/plain")},
+    )
+    assert r.status_code == 403
+    assert "disabled" in r.json()["detail"].lower()
+
+
+def test_list_collections_backend_exception_returns_empty():
+    """GET /collections returns [] gracefully when the backend raises."""
+    from unittest.mock import patch
+    with patch("alcove.index.backend.get_backend", side_effect=RuntimeError("no db")):
+        r = client.get("/collections")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+def test_root_backend_exception_still_renders_html():
+    """GET / renders the search page even when the backend raises (doc_count falls back to 0)."""
+    from unittest.mock import patch
+    with patch("alcove.index.backend.get_backend", side_effect=RuntimeError("no db")):
+        r = client.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
+def test_demos_index_handles_unreadable_config():
+    """GET /demos returns a valid page even when demos.json cannot be read."""
+    from pathlib import Path
+    from unittest.mock import patch
+    original_read = Path.read_text
+
+    def mock_read(self, *args, **kwargs):
+        if self.name == "demos.json":
+            raise OSError("permission denied")
+        return original_read(self, *args, **kwargs)
+
+    with patch.object(Path, "read_text", mock_read):
+        r = client.get("/demos")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
+def test_demos_index_with_live_collection():
+    """GET /demos marks a demo as live when its collection exists in the backend."""
+    from unittest.mock import MagicMock, patch
+    mock_backend = MagicMock()
+    # "congress_summaries" matches the collection in demos.json
+    mock_backend.list_collections.return_value = [
+        {"name": "congress_summaries", "doc_count": 100}
+    ]
+    with patch("alcove.index.backend.get_backend", return_value=mock_backend):
+        r = client.get("/demos")
+    assert r.status_code == 200
+    assert "Congress" in r.text
+
+
+def test_demos_index_backend_exception_still_renders():
+    """GET /demos renders even when the backend raises during live-collection resolution."""
+    from unittest.mock import patch
+    with patch("alcove.index.backend.get_backend", side_effect=RuntimeError("no db")):
+        r = client.get("/demos")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
