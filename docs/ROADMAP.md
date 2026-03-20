@@ -42,7 +42,7 @@ The [plugin API](ARCHITECTURE.md#plugin-system) exposes three extension points: 
 
 ### Extractor plugins
 
-Extractors receive a file path and return a list of text chunks. The entry point maps a file extension to a callable: `rtf = my_plugin:extract_rtf`. Plugins override builtins on name collision.
+Extractors receive a file path and return a list of text chunks. The entry point maps a file extension to a callable: `rtf = my_plugin:extract_rtf`. Plugins override built-ins on name collision.
 
 | Candidate | Library | Wiring |
 |-----------|---------|--------|
