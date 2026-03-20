@@ -390,7 +390,7 @@ class TestCmdSeedDemo:
         assert exc.value.code == 1
         assert "scripts/" in capsys.readouterr().err
 
-    def test_missing_script_exits(self, capsys, tmp_path, monkeypatch):
+    def test_missing_script_exits(self, tmp_path, monkeypatch):
         import argparse
         from alcove.cli import cmd_seed_demo
         (tmp_path / "scripts").mkdir()

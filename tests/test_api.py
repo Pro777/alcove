@@ -163,7 +163,7 @@ def test_demos_index_handles_unreadable_config():
 
     def mock_read(self, *args, **kwargs):
         if self.name == "demos.json":
-            raise IOError("permission denied")
+            raise OSError("permission denied")
         return original_read(self, *args, **kwargs)
 
     with patch.object(Path, "read_text", mock_read):
