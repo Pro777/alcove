@@ -69,7 +69,7 @@ To create a plugin, add an `[project.entry-points]` section in your package's `p
 rtf = "my_plugin:extract_rtf"
 ```
 
-Plugins are merged with builtins at startup. When a plugin and a builtin share the same name, the plugin wins. See [ROADMAP.md](ROADMAP.md#mid-term) for planned plugin API expansion.
+Plugins are merged with built-ins at startup. When a plugin and a built-in share the same name, the plugin wins. See [ROADMAP.md](ROADMAP.md#mid-term) for planned plugin API expansion and [PLUGINS.md](PLUGINS.md) for domain-specific plugin ideas and recipes.
 
 ## Boundary
 
