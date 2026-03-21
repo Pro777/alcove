@@ -116,8 +116,16 @@ remove the `<button class="theme-toggle">` block from `base.html` and add a fixe
 
 ## Typography
 
-The default typeface is [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk)
-loaded via Google Fonts. To use a self-hosted or system font instead:
+> **Offline-first note:** Alcove is designed to operate without external network
+> access. The Google Fonts CDN references in the demo HTML files are for
+> convenience only. Production deployments should self-host fonts or use a
+> system font stack (see below).
+
+The default typeface in the demo files is
+[Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk), currently
+loaded from the Google Fonts CDN. This introduces an external dependency that
+conflicts with fully offline operation. To replace with a self-hosted or
+system font:
 
 1. Remove the `<link rel="preconnect">` and `<link href="https://fonts.googleapis.com">` lines from `base.html`.
 2. Override `--font-sans` in your custom CSS to point to your font stack.
