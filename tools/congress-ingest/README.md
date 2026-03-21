@@ -35,7 +35,7 @@ python tools/congress-ingest/ingest_bills.py \
 
 ## Dependencies
 
-```
+```text
 defusedxml
 chromadb
 ```

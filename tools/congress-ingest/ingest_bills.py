@@ -12,7 +12,7 @@ import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
 from urllib import error, request
 
 from defusedxml import ElementTree as ET
@@ -346,6 +346,12 @@ class OllamaEmbedder:
         timeout: int = 60,
         retries: int = 4,
     ):
+        from urllib.parse import urlparse
+        parsed = urlparse(base_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"Ollama base_url must use http or https scheme, got: {base_url!r}"
+            )
         self.endpoint = base_url.rstrip("/") + "/api/embeddings"
         self.model = model
         self.timeout = timeout
@@ -436,7 +442,7 @@ def process_sources(
             stats["summaries"] += len(chunks)
             verb = "Parsed" if dry_run else "Ingested"
             print(f"[{index}/{total}] {verb} {source.source_name} ({len(chunks)} summaries)", file=stream)
-        except Exception as exc:
+        except (ValueError, RuntimeError, OSError) as exc:
             stats["failed"] += 1
             print(f"[{index}/{total}] Failed {source.source_name}: {exc}", file=stream)
 

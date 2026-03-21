@@ -70,8 +70,8 @@ def test_normalize_parses_full_id(ib):
 
 
 def test_normalize_extracts_trailing_version(ib):
-    _, ver = ib.normalize_summary_identity("someid-v3", congress=118, bill_type="s", bill_number=5)
-    assert ver == "v3"
+    _, _ver = ib.normalize_summary_identity("someid-v3", congress=118, bill_type="s", bill_number=5)
+    assert _ver == "v3"
 
 
 # ── version_sort_key ─────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ def test_parse_congresses_all(ib):
 
 
 def test_parse_congresses_invalid(ib):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="integer"):
         ib.parse_congresses("notanumber")
 
 
