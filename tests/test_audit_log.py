@@ -13,14 +13,18 @@ import pytest
 _MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "audit-log" / "audit_log.py"
 
 
-def _load_module():
+def _load_module() -> ModuleType:
     _mod_key = "audit_log_test_module"
     spec = importlib.util.spec_from_file_location(_mod_key, _MODULE_PATH)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[_mod_key] = mod
-    spec.loader.exec_module(mod)
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        sys.modules.pop(_mod_key, None)
+        raise
     return mod
 
 
