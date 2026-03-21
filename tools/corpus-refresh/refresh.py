@@ -322,15 +322,21 @@ def refresh_arxiv(
     else:
         since = datetime.now(UTC) - timedelta(days=days)
 
+    # Capture the run boundary BEFORE fetching so that records added during the
+    # run are included in the next window and never silently dropped.
+    run_ts = _iso_now()
     print(f"Fetching arXiv papers since {since.isoformat()} (query: {query!r})", file=out)
     papers = fetch_arxiv_since(query, since, timeout=timeout)
     print(f"Found {len(papers)} papers", file=out)
 
     written = 0
-    if not dry_run and papers:
-        writer = ChromaWriter(chroma_path, collection)
-        written = writer.upsert_arxiv(papers)
-        checkpoint.set(ck_key, _iso_now())
+    if not dry_run:
+        if papers:
+            writer = ChromaWriter(chroma_path, collection)
+            written = writer.upsert_arxiv(papers)
+        # Always advance the checkpoint (even on empty fetch) so the next run
+        # starts from the current boundary rather than re-scanning the window.
+        checkpoint.set(ck_key, run_ts)
 
     return {"fetched": len(papers), "written": written}
 
@@ -355,15 +361,17 @@ def refresh_psyarxiv(
     else:
         since = datetime.now(UTC) - timedelta(days=days)
 
+    run_ts = _iso_now()
     print(f"Fetching PsyArXiv preprints since {since.isoformat()}", file=out)
     records = list(fetch_psyarxiv_since(since, timeout=timeout))
     print(f"Found {len(records)} preprints", file=out)
 
     written = 0
-    if not dry_run and records:
-        writer = ChromaWriter(chroma_path, collection)
-        written = writer.upsert_psyarxiv(records)
-        checkpoint.set(ck_key, _iso_now())
+    if not dry_run:
+        if records:
+            writer = ChromaWriter(chroma_path, collection)
+            written = writer.upsert_psyarxiv(records)
+        checkpoint.set(ck_key, run_ts)
 
     return {"fetched": len(records), "written": written}
 

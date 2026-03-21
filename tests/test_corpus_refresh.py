@@ -346,3 +346,32 @@ class TestRefreshPsyarxivDryRun:
 
         assert stats["fetched"] == 5
         assert stats["written"] == 0
+
+
+class TestCheckpointAdvancesOnEmptyFetch:
+    """Checkpoint should advance even when no records are fetched (avoids re-scanning)."""
+
+    def test_arxiv_empty_fetch_still_updates_checkpoint(self, refresh, tmp_path):
+        ck = refresh.CheckpointStore(tmp_path / "ck.json")
+        with patch.object(refresh, "fetch_arxiv_since", return_value=[]):
+            refresh.refresh_arxiv(
+                "cat:cs.AI",
+                chroma_path=tmp_path / "chroma",
+                collection="arxiv",
+                days=7,
+                dry_run=False,
+                checkpoint=ck,
+            )
+        assert ck.get("arxiv:cat:cs.AI:arxiv") is not None
+
+    def test_psyarxiv_empty_fetch_still_updates_checkpoint(self, refresh, tmp_path):
+        ck = refresh.CheckpointStore(tmp_path / "ck.json")
+        with patch.object(refresh, "fetch_psyarxiv_since", return_value=iter([])):
+            refresh.refresh_psyarxiv(
+                chroma_path=tmp_path / "chroma",
+                collection="psyarxiv",
+                days=7,
+                dry_run=False,
+                checkpoint=ck,
+            )
+        assert ck.get("psyarxiv:psyarxiv") is not None
