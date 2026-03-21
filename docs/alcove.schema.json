@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alcove.software/schemas/manifest/v1.json",
+  "title": "Alcove Manifest",
+  "description": "alcove.json — runtime configuration for plugin and index registry discovery.",
+  "type": "object",
+  "required": ["alcove_manifest_version"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "alcove_manifest_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Schema version. Currently only '1' is valid."
+    },
+    "registries": {
+      "type": "object",
+      "description": "Registry URLs to consult for plugin and index discovery. Omit to use Alcove canonical defaults.",
+      "additionalProperties": false,
+      "properties": {
+        "plugins": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the plugin registry JSON endpoint.",
+          "default": "https://plugins.alcove.software/registry.json"
+        },
+        "indexes": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the index registry JSON endpoint.",
+          "default": "https://search.alcove.software/registry.json"
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "description": "Plugins installed for this Alcove instance.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Package name, e.g. 'alcove-audio'.",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "description": "PEP 440 version specifier, e.g. '>=0.2.0' or '==1.0.0'."
+          },
+          "source": {
+            "type": "string",
+            "enum": ["registry", "local", "git"],
+            "default": "registry",
+            "description": "Where to install from. 'registry' uses the configured plugin registry."
+          },
+          "url": {
+            "type": "string",
+            "description": "Required when source is 'git' (repo URL) or 'local' (filesystem path)."
+          }
+        }
+      }
+    },
+    "indexes": {
+      "type": "array",
+      "description": "Index endpoints configured for this instance.",
+      "items": {
+        "type": "object",
+        "required": ["id", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Local identifier used in CLI (alcove query --index <id>).",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base URL of the Alcove index endpoint."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable label for this index."
+          },
+          "auth": {
+            "oneOf": [
+              {
+                "type": "null",
+                "description": "No authentication (default). Safe for localhost-only indexes."
+              },
+              {
+                "type": "object",
+                "required": ["type"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "bearer",
+                    "description": "Bearer token auth."
+                  },
+                  "token_env": {
+                    "type": "string",
+                    "description": "Name of the environment variable holding the bearer token."
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["type"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "basic",
+                    "description": "HTTP Basic auth."
+                  },
+                  "user_env": {
+                    "type": "string",
+                    "description": "Name of the environment variable holding the username."
+                  },
+                  "password_env": {
+                    "type": "string",
+                    "description": "Name of the environment variable holding the password."
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
