@@ -135,15 +135,15 @@ _COPULA = {"is", "are", "was", "were", "am", "be", "been", "being"}
 
 # Negation contractions → base verb + NOT
 _NEGATION_RE = re.compile(
-    # Group 1: verb root; Group 2: contraction suffix (n't or 't for can/won't)
-    r"\b(do|does|did|could|would|should|have|has|had|is|are|was|were)(n['\u2019]t)\b"
-    # can't / won't (won = will contracted irregularly) use only 't suffix
-    r"|\b(can|won)['\u2019]t\b",
+    # Group 1: verb root + n't (regular pattern)
+    r"\b(do|does|did|could|would|should|must|have|has|had|is|are|was|were)(n['\u2019]t)\b"
+    # can't / won't / shan't (irregular or 't-only suffix)
+    r"|\b(can|won|shan)['\u2019]t\b",
     re.IGNORECASE,
 )
 
 # Map contracted forms that don't share the base verb name
-_IRREGULAR_CONTRACTION_MAP = {"won": "will"}
+_IRREGULAR_CONTRACTION_MAP = {"won": "will", "shan": "shall"}
 _WANT_NEG_RE = re.compile(r"\bdon['\u2019]t want\b", re.IGNORECASE)
 
 

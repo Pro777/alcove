@@ -63,8 +63,22 @@ class TestExpandNegations:
     def test_doesnt(self, gloss):
         assert "does not" in gloss._expand_negations("She doesn't like it")
 
+    def test_doesnt_exact(self, gloss):
+        assert gloss._expand_negations("She doesn't like it") == "She does not like it"
+
+    def test_wont_exact(self, gloss):
+        assert gloss._expand_negations("I won't go") == "I will not go"
+
+    def test_do_question_no_negation_unchanged(self, gloss):
+        text = "Do you want coffee?"
+        assert gloss._expand_negations(text) == text
+
     def test_no_negation_unchanged(self, gloss):
         text = "I want coffee"
+        assert gloss._expand_negations(text) == text
+
+    def test_temporal_unchanged(self, gloss):
+        text = "I went last week"
         assert gloss._expand_negations(text) == text
 
 
