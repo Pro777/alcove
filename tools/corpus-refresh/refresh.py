@@ -94,9 +94,17 @@ class CheckpointStore:
         return self._data.get(key)
 
     def set(self, key: str, value: str) -> None:
-        self._data[key] = value
+        # Re-read from disk before writing so overlapping runs (e.g. arxiv +
+        # psyarxiv launched concurrently) don't stomp on each other's keys.
+        on_disk = self._load()
+        on_disk[key] = value
+        self._data = on_disk
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(self._data, indent=2) + "\n", encoding="utf-8")
+        # Write atomically via a temp file + rename so a crash mid-write
+        # doesn't leave a truncated checkpoint file.
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(on_disk, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(self.path)
 
 
 # ---------------------------------------------------------------------------
@@ -175,9 +183,17 @@ def fetch_arxiv_since(
 ) -> list[ArxivPaper]:
     """Fetch arXiv papers matching *query* updated since *since*.
 
+    The arXiv API only supports ``submittedDate`` as a server-side date filter;
+    there is no filter for the revision/update date.  We therefore widen the
+    server query to all papers submitted since *since*, sort by
+    ``lastUpdatedDate``, and then apply a client-side filter on the Atom
+    ``<updated>`` field so that only papers whose last revision is ≥ *since*
+    are returned.  This catches revisions to older papers while excluding
+    un-revised old papers from the result set.
+
     Args:
         query: arXiv search query string (e.g. ``"cat:cs.AI"``).
-        since: Only return papers updated after this UTC datetime.
+        since: Only return papers with ``updated >= since`` (UTC).
         max_results: Maximum number of results per request.
         timeout: HTTP timeout in seconds.
     """
@@ -191,7 +207,20 @@ def fetch_arxiv_since(
     })
     url = f"{_ARXIV_API}?{params}"
     xml_bytes = _fetch_bytes(url, timeout=timeout)
-    return _parse_arxiv_feed(xml_bytes)
+    papers = _parse_arxiv_feed(xml_bytes)
+    # Client-side filter: only keep papers whose last revision is >= since.
+    since_aware = since if since.tzinfo is not None else since.replace(tzinfo=UTC)
+    filtered: list[ArxivPaper] = []
+    for p in papers:
+        try:
+            updated_dt = datetime.fromisoformat(p.updated)
+            if updated_dt.tzinfo is None:
+                updated_dt = updated_dt.replace(tzinfo=UTC)
+            if updated_dt >= since_aware:
+                filtered.append(p)
+        except (ValueError, AttributeError):
+            filtered.append(p)  # keep if we can't parse the date
+    return filtered
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +280,14 @@ def fetch_psyarxiv_since(
 
 
 class ChromaWriter:
-    """Thin wrapper around a ChromaDB PersistentClient."""
+    """Thin wrapper around a ChromaDB PersistentClient.
+
+    This tool is intentionally Chroma-specific: it writes directly to a local
+    ``PersistentClient`` without going through the alcove backend abstraction
+    layer (``alcove.index``).  That keeps it self-contained and usable without
+    installing the full alcove package.  If you need zvec or another backend,
+    use the alcove CLI instead.
+    """
 
     def __init__(self, path: Path, collection_name: str) -> None:
         import chromadb  # type: ignore[import]
