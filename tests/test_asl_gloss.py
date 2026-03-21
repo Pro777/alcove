@@ -141,10 +141,21 @@ class TestNegation:
     def test_dont_becomes_not(self, converter):
         result = converter.convert("I don't want coffee.")
         assert "NOT" in result.tokens
+        assert "DO" not in result.tokens  # auxiliary must drop
 
-    def test_doesnt_becomes_not(self, converter):
+    def test_doesnt_becomes_not_exact(self, converter):
+        """SHE DOES NOT LIKE IT must have DOES dropped → SHE NOT LIKE IT."""
         result = converter.convert("She doesn't like it.")
         assert "NOT" in result.tokens
+        assert "DOES" not in result.tokens  # does drops as auxiliary
+        assert result.gloss == "SHE NOT LIKE IT"
+
+    def test_wont_exact(self, converter):
+        """I won't go. → ME NOT GO (will auxiliary drops after expansion)."""
+        result = converter.convert("I won't go.")
+        assert "NOT" in result.tokens
+        assert "WILL" not in result.tokens  # will drops as auxiliary
+        assert result.gloss == "ME NOT GO"
 
     def test_cant_becomes_not(self, converter):
         result = converter.convert("I can't go.")
@@ -161,6 +172,12 @@ class TestYNQuestion:
         result = converter.convert("Do you want coffee?")
         assert "Y/N" in result.tokens
         assert any("Y/N" in n for n in result.notes)
+
+    def test_yn_do_auxiliary_drops(self, converter):
+        """Do you want coffee? must not contain DO — it's a question-forming auxiliary."""
+        result = converter.convert("Do you want coffee?")
+        assert "DO" not in result.tokens
+        assert result.gloss == "YOU WANT COFFEE Y/N"
 
     def test_yn_note_present(self, converter):
         result = converter.convert("Is she here?")
@@ -192,6 +209,13 @@ class TestTemporalFronting:
     def test_tomorrow_fronts(self, converter):
         result = converter.convert("She will come tomorrow.")
         assert result.tokens[0] == "TOMORROW"
+
+    def test_last_week_phrase_fronts(self, converter):
+        """'last week' is a two-word temporal that must front as a phrase."""
+        result = converter.convert("I left last week.")
+        assert result.tokens[0] == "LAST WEEK"
+        # Neither LAST nor WEEK should appear again later in the sequence
+        assert result.tokens.count("LAST WEEK") == 1
 
 
 # ---------------------------------------------------------------------------

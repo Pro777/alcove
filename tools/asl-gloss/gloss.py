@@ -26,7 +26,11 @@ Usage::
 
 Plugin interface::
 
-    from tools.asl_gloss.gloss import SignLanguagePlugin, GlossConverter
+    # Load directly — directory uses a hyphen so standard package import needs a workaround:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gloss", "tools/asl-gloss/gloss.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    GlossConverter = mod.GlossConverter
     converter = GlossConverter()
     result = converter.convert("She doesn't want coffee.")
     print(result.gloss)  # SHE WANT NOT COFFEE
@@ -107,11 +111,21 @@ _PRONOUN_MAP = {
 }
 
 # Temporal adverbs that should front (move to sentence start)
-_TEMPORAL_ADVERBS = {
+# Single-word temporals are matched per-token; multi-word phrases are matched
+# at the text level before tokenization (sorted longest-first).
+_TEMPORAL_ADVERBS_SINGLE = {
     "yesterday", "today", "tomorrow", "now", "before",
     "later", "recently", "soon", "already", "finally",
-    "last week", "next week", "last year", "next year",
 }
+_TEMPORAL_PHRASES = [
+    "last week", "next week", "last year", "next year",
+    "last month", "next month",
+]
+_TEMPORAL_ADVERBS = _TEMPORAL_ADVERBS_SINGLE  # keep old name for single-token check
+
+# Auxiliary verbs that are dropped in ASL gloss (do/does/did for question
+# formation; will/shall as modal auxiliaries — ASL expresses tense lexically)
+_AUX_VERBS = {"do", "does", "did", "will", "shall"}
 
 # Wh-question words
 _WH_WORDS = {"what", "where", "when", "why", "how", "who", "which", "whom", "whose"}
@@ -123,9 +137,13 @@ _COPULA = {"is", "are", "was", "were", "am", "be", "been", "being"}
 _NEGATION_RE = re.compile(
     # Group 1: verb root; Group 2: contraction suffix (n't or 't for can/won't)
     r"\b(do|does|did|could|would|should|have|has|had|is|are|was|were)(n['\u2019]t)\b"
-    r"|\b(can|will)['\u2019]t\b",
+    # can't / won't (won = will contracted irregularly) use only 't suffix
+    r"|\b(can|won)['\u2019]t\b",
     re.IGNORECASE,
 )
+
+# Map contracted forms that don't share the base verb name
+_IRREGULAR_CONTRACTION_MAP = {"won": "will"}
 _WANT_NEG_RE = re.compile(r"\bdon['\u2019]t want\b", re.IGNORECASE)
 
 
@@ -153,11 +171,13 @@ def _detect_question_type(text: str) -> str | None:
 
 
 def _expand_negations(text: str) -> str:
-    """Expand contractions like ``don't`` → ``do not``."""
+    """Expand contractions like ``don't`` → ``do not``, ``won't`` → ``will not``."""
     def _expand(m: re.Match) -> str:
         # Group 1: regular verbs (do, does, did, etc.)
-        # Group 3: irregular (can → can not, will → will not)
+        # Group 3: can/won (won → will via _IRREGULAR_CONTRACTION_MAP)
         verb = m.group(1) or m.group(3)
+        if verb:
+            verb = _IRREGULAR_CONTRACTION_MAP.get(verb.lower(), verb)
         return f"{verb} not"
     return _NEGATION_RE.sub(_expand, text)
 
@@ -208,11 +228,18 @@ class GlossConverter:
         # Expand negation contractions before tokenisation
         working = _expand_negations(text)
 
+        # Front multi-word temporal phrases at the text level (longest first so
+        # "last week" is matched before "last" alone would be checked per-token)
+        fronted: list[str] = []
+        if self.front_temporals:
+            for phrase in _TEMPORAL_PHRASES:
+                pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+                if pattern.search(working):
+                    fronted.append(phrase.upper())
+                    working = pattern.sub("", working)
+
         tokens = _tokenize(working)
         result_tokens: list[str] = []
-
-        # Track temporal fronting
-        fronted: list[str] = []
 
         for tok in tokens:
             lower = tok.lower()
@@ -221,8 +248,12 @@ class GlossConverter:
             if self.drop_articles and lower in _ARTICLES:
                 continue
 
-            # Drop copula
+            # Drop copula (be-verbs)
             if self.drop_copula and lower in _COPULA:
+                continue
+
+            # Drop auxiliary verbs (do/does/did for question formation; will/shall)
+            if lower in _AUX_VERBS:
                 continue
 
             # Substitute pronouns
@@ -230,7 +261,7 @@ class GlossConverter:
                 result_tokens.append(_PRONOUN_MAP[lower])
                 continue
 
-            # Temporal adverb fronting
+            # Single-word temporal adverb fronting
             if self.front_temporals and lower in _TEMPORAL_ADVERBS:
                 fronted.append(lower.upper())
                 continue
