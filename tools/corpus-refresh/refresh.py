@@ -505,7 +505,7 @@ def main(argv: list[str] | None = None) -> int:
             checkpoint=checkpoint,
             timeout=args.timeout,
         )
-    else:
+    elif args.source == "psyarxiv":
         stats = refresh_psyarxiv(
             chroma_path=chroma_path,
             collection=args.collection,
@@ -514,6 +514,8 @@ def main(argv: list[str] | None = None) -> int:
             checkpoint=checkpoint,
             timeout=args.timeout,
         )
+    else:
+        raise ValueError(f"Unsupported source: {args.source!r}. Valid sources: arxiv, psyarxiv")
 
     print(f"Done: {stats}", flush=True)
     return 0

@@ -159,12 +159,6 @@ class TestParseArxivFeed:
 
 
 class TestFetchPsyarxivSince:
-    def _make_osf_page(self, items, *, next_url=None):
-        return {
-            "data": items,
-            "links": {"next": next_url},
-        }
-
     def _make_item(self, id_, title, abstract="Abstract text"):
         return {
             "id": id_,
