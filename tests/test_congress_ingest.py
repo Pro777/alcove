@@ -21,7 +21,11 @@ def _load_module():
         raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[_mod_key] = mod
-    spec.loader.exec_module(mod)
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        sys.modules.pop(_mod_key, None)
+        raise
     return mod
 
 
@@ -71,7 +75,7 @@ def test_normalize_uses_attrs_when_no_id(ib):
 
 def test_normalize_parses_full_id(ib):
     # Pattern: id<congress><bill_type><bill_number><version>
-    norm_id, ver = ib.normalize_summary_identity(
+    norm_id, _ver = ib.normalize_summary_identity(
         "id118hr42v1", congress=0, bill_type="x", bill_number=0
     )
     assert "118" in norm_id

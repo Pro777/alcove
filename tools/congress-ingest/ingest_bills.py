@@ -392,10 +392,14 @@ class OllamaEmbedder:
 class ChromaWriter:
     def __init__(self, path: Path, *, collection_name: str = COLLECTION_NAME):
         import chromadb
+        from chromadb.config import Settings
 
         self.path = path
         self.collection_name = collection_name
-        self.client = chromadb.PersistentClient(path=str(path))
+        self.client = chromadb.PersistentClient(
+            path=str(path),
+            settings=Settings(anonymized_telemetry=False),
+        )
         self.collection = self.client.get_or_create_collection(name=collection_name)
 
     def reset(self) -> None:
