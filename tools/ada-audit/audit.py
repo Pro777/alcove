@@ -275,29 +275,35 @@ def _rule_link_text(collector: _HTMLCollector) -> Iterator[Violation]:
 
 
 def _rule_table_headers(collector: _HTMLCollector) -> Iterator[Violation]:
-    """Data tables should have <th> elements with scope (WCAG 1.3.1)."""
-    in_table = False
-    table_has_th = False
-    table_elem: _Element | None = None
+    """Data tables should have <th> elements (WCAG 1.3.1).
 
-    for elem in collector.elements:
-        if elem.tag == "table":
-            in_table = True
-            table_has_th = False
-            table_elem = elem
-        elif elem.tag == "/table":
-            if in_table and not table_has_th:
-                line = table_elem.line if table_elem else None
-                yield Violation(
-                    rule="table-headers",
-                    severity="warning",
-                    message="Table appears to have no <th> header cells (WCAG 1.3.1)",
-                    element="<table>",
-                    line=line,
-                )
-            in_table = False
-        elif in_table and elem.tag == "th":
-            table_has_th = True
+    Since end-tags are not tracked in ``collector.elements``, table boundaries
+    are approximated by element position: the "section" belonging to a given
+    ``<table>`` spans from that element to the start of the next ``<table>``
+    (or end of list).  This is accurate for non-nested tables.
+    """
+    table_positions = [
+        (i, elem) for i, elem in enumerate(collector.elements) if elem.tag == "table"
+    ]
+    if not table_positions:
+        return
+
+    total = len(collector.elements)
+    for pos_idx, (elem_idx, table_elem) in enumerate(table_positions):
+        next_table_idx = (
+            table_positions[pos_idx + 1][0]
+            if pos_idx + 1 < len(table_positions)
+            else total
+        )
+        section = collector.elements[elem_idx:next_table_idx]
+        if not any(e.tag == "th" for e in section):
+            yield Violation(
+                rule="table-headers",
+                severity="warning",
+                message="Table appears to have no <th> header cells (WCAG 1.3.1)",
+                element="<table>",
+                line=table_elem.line,
+            )
 
 
 def _rule_button_text(collector: _HTMLCollector) -> Iterator[Violation]:
@@ -330,6 +336,7 @@ _RULES = [
     _rule_document_lang,
     _rule_link_text,
     _rule_button_text,
+    _rule_table_headers,
 ]
 
 

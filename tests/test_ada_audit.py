@@ -240,6 +240,29 @@ class TestButtonText:
 
 
 # ---------------------------------------------------------------------------
+# table-headers rule
+# ---------------------------------------------------------------------------
+
+
+class TestTableHeaders:
+    def test_table_without_th_is_warning(self, ada):
+        html = "<html lang='en'><body><table><tr><td>Cell</td></tr></table></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "table-headers")
+        assert len(vs) == 1
+        assert vs[0].severity == "warning"
+
+    def test_table_with_th_passes(self, ada):
+        html = "<html lang='en'><body><table><tr><th>Header</th><td>Cell</td></tr></table></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "table-headers")
+        assert vs == []
+
+    def test_no_table_no_violation(self, ada):
+        html = "<html lang='en'><body><p>No table here</p></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "table-headers")
+        assert vs == []
+
+
+# ---------------------------------------------------------------------------
 # audit_html / audit_file integration
 # ---------------------------------------------------------------------------
 
