@@ -61,6 +61,28 @@ def test_api_key_stored(ec):
     assert client._api_key == "secret"
 
 
+def test_base_url_from_env(ec, monkeypatch):
+    monkeypatch.setenv("ALCOVE_URL", "http://remotehost:9999")
+    client = ec.AlcoveClient()
+    assert client.base_url == "http://remotehost:9999"
+
+
+def test_api_key_from_env(ec, monkeypatch):
+    monkeypatch.setenv("ALCOVE_API_KEY", "envkey")
+    client = ec.AlcoveClient()
+    assert client._api_key == "envkey"
+
+
+def test_invalid_scheme_raises(ec):
+    with pytest.raises(ValueError, match="http or https"):
+        ec.AlcoveClient("ftp://localhost:21")
+
+
+def test_missing_scheme_raises(ec):
+    with pytest.raises(ValueError, match="http or https"):
+        ec.AlcoveClient("localhost:8000")
+
+
 # ── health() ─────────────────────────────────────────────────────────────────
 
 
@@ -194,3 +216,44 @@ def test_api_key_sent_in_header(ec):
 
     req = captured_requests[0]
     assert req.get_header("Authorization") == "Bearer my-secret"
+
+
+# ── Multipart upload guards ───────────────────────────────────────────────────
+
+
+def test_ingest_oversized_file_raises(ec, tmp_path):
+    """Files exceeding the 25 MB cap must raise before sending."""
+    big_file = tmp_path / "huge.bin"
+    # Write 26 MB of zeros
+    big_file.write_bytes(b"\x00" * (26 * 1024 * 1024))
+    client = ec.AlcoveClient()
+    with pytest.raises(ValueError, match="25 MB"):
+        client.ingest_file(big_file)
+
+
+def test_ingest_filename_special_chars_escaped(ec, tmp_path):
+    """Filenames with special chars must be sanitised in the Content-Disposition header.
+
+    We simulate a filename with a backslash (valid on POSIX, triggers the
+    escape path) by patching Path.name after writing the file.
+    """
+    normal_file = tmp_path / "normal.txt"
+    normal_file.write_text("content")
+
+    from unittest.mock import PropertyMock
+
+    payload = [{"filename": "back\\slash.txt", "chunks": 1, "status": "indexed"}]
+    captured_bodies: list[bytes] = []
+
+    def fake_urlopen(req, timeout=None):
+        captured_bodies.append(req.data)
+        return _mock_response(payload)
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        with patch.object(type(normal_file), "name", new_callable=PropertyMock, return_value='back\\slash.txt'):
+            client = ec.AlcoveClient()
+            client.ingest_file(normal_file)
+
+    assert len(captured_bodies) == 1
+    # backslash must be doubled in the header
+    assert b"back\\\\slash.txt" in captured_bodies[0]

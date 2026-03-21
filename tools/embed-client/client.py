@@ -72,6 +72,11 @@ class AlcoveClient:
         api_key: str | None = None,
     ) -> None:
         raw = (base_url or os.environ.get("ALCOVE_URL", "http://localhost:8000")).rstrip("/")
+        _scheme = raw.split("://", 1)[0].lower() if "://" in raw else ""
+        if _scheme not in ("http", "https"):
+            raise ValueError(
+                f"base_url must use http or https scheme, got: {raw!r}"
+            )
         self.base_url = raw
         self.timeout = timeout
         self._api_key = api_key or os.environ.get("ALCOVE_API_KEY")
@@ -206,12 +211,25 @@ class AlcoveClient:
         collection: str,
     ) -> Any:
         boundary = b"alcoveclientboundary"
+        _MAX_TOTAL_BYTES = 25 * 1024 * 1024  # 25 MB hard cap
         body_parts: list[bytes] = []
+        total_bytes = 0
 
         for file_path in file_paths:
             mime_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
             file_bytes = file_path.read_bytes()
-            filename = file_path.name
+            total_bytes += len(file_bytes)
+            if total_bytes > _MAX_TOTAL_BYTES:
+                raise ValueError(
+                    f"Total upload size exceeds {_MAX_TOTAL_BYTES // (1024 * 1024)} MB limit"
+                )
+            filename = (
+                file_path.name
+                .replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("\r", "")
+                .replace("\n", "")
+            )
             body_parts.append(
                 b"--" + boundary + b"\r\n"
                 b'Content-Disposition: form-data; name="files"; filename="'
