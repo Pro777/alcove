@@ -1,0 +1,198 @@
+{% extends "congress/base.html" %}
+
+{% block title %}{{ query | e }} — Alcove Congress{% endblock %}
+
+{% block page_header %}
+<div class="bg-white border-b border-primary-100 px-6 py-4">
+  <div class="max-w-5xl mx-auto flex items-center gap-4">
+    <a href="/" class="font-ui text-sm text-primary-500 hover:text-accent transition-colors flex items-center gap-1">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+      </svg>
+      Search
+    </a>
+    <span class="text-primary-200">/</span>
+    <span class="font-ui text-sm text-primary-700 truncate max-w-xs">&ldquo;{{ query | e }}&rdquo;</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block sidebar_filters %}
+<div class="px-4 py-4 border-t border-primary-700 space-y-4">
+
+  <div>
+    <p class="font-ui text-xs font-semibold text-primary-500 uppercase tracking-wider mb-2">Source type</p>
+    <div class="space-y-1.5 font-ui text-sm text-primary-300">
+      <label class="flex items-center gap-2 cursor-pointer hover:text-white">
+        <input type="checkbox" class="rounded border-primary-600 bg-primary-800 text-accent" checked> Bills &amp; Resolutions
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer hover:text-white">
+        <input type="checkbox" class="rounded border-primary-600 bg-primary-800 text-accent" checked> U.S. Code
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer hover:text-white">
+        <input type="checkbox" class="rounded border-primary-600 bg-primary-800 text-accent" checked> CFR
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer hover:text-white">
+        <input type="checkbox" class="rounded border-primary-600 bg-primary-800 text-accent"> Committee Reports
+      </label>
+    </div>
+  </div>
+
+  <div>
+    <p class="font-ui text-xs font-semibold text-primary-500 uppercase tracking-wider mb-2">Relevance threshold</p>
+    <input type="range" min="0" max="100" value="0"
+      class="w-full h-1.5 rounded-full bg-primary-700 accent-accent cursor-pointer"
+      aria-label="Minimum relevance score">
+    <div class="flex justify-between font-ui text-xs text-primary-500 mt-1">
+      <span>Any</span><span>High only</span>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Search bar (persistent on results page) ─────────────────────── -->
+<form class="mb-6" method="GET" action="/search" role="search">
+  <div class="flex gap-2">
+    <div class="relative flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-primary-400" aria-hidden="true">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </span>
+      <input
+        name="q"
+        type="search"
+        value="{{ query | e }}"
+        class="block w-full pl-9 pr-4 py-2.5 border border-primary-200 rounded-md bg-white font-ui text-sm text-primary-900 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+        aria-label="Refine search">
+    </div>
+    <button type="submit"
+      class="px-5 py-2.5 bg-accent text-white font-ui text-sm font-medium rounded-md hover:bg-accent-hover transition-colors">
+      Search
+    </button>
+  </div>
+</form>
+
+{% if results %}
+
+<!-- ── Results header ─────────────────────────────────────────────── -->
+<div class="flex items-baseline justify-between mb-4">
+  <p class="font-ui text-sm text-primary-600" role="status">
+    <span class="font-semibold text-primary-800">{{ results | length }}</span>
+    result{% if results | length != 1 %}s{% endif %} for
+    <span class="italic">&ldquo;{{ query | e }}&rdquo;</span>
+  </p>
+  <p class="font-ui text-xs text-primary-400">Sorted by relevance</p>
+</div>
+
+<!-- ── Result cards ───────────────────────────────────────────────── -->
+<div class="space-y-3" role="region" aria-label="Search results" aria-live="polite">
+  {% for r in results %}
+  {% set score_pct = (r.score * 100) | round | int %}
+  {% set ext = r.source.rsplit('.', 1)[1].upper() if '.' in r.source else 'DOC' %}
+  {% set card_id = "result-" ~ loop.index %}
+
+  <article class="bg-white border border-primary-100 rounded-lg overflow-hidden hover:border-primary-300 hover:shadow-sm transition-all" id="{{ card_id }}">
+
+    <!-- Card header -->
+    <div class="px-5 pt-4 pb-3 border-b border-primary-50 flex items-start justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <!-- Source path / breadcrumb -->
+        <div class="flex items-center gap-1.5 font-ui text-xs text-primary-400 mb-1 flex-wrap">
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-600 font-ui border border-primary-100">
+            {{ ext }}
+          </span>
+          <span class="truncate">{{ r.source_display | default(r.source) | safe }}</span>
+        </div>
+        <!-- Filename -->
+        <a href="{{ r.href }}" target="_blank" rel="noopener noreferrer"
+           class="font-ui font-medium text-accent hover:text-accent-hover hover:underline text-sm leading-snug block truncate"
+           aria-describedby="{{ card_id }}-snippet">
+          {{ r.filename | safe }}
+        </a>
+      </div>
+
+      <!-- Relevance score badge -->
+      <div class="shrink-0 text-right" aria-label="Relevance {{ '%.0f' | format(score_pct) }}%">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-ui text-xs font-semibold
+          {% if score_pct >= 75 %}bg-green-50 text-green-700 border border-green-200
+          {% elif score_pct >= 50 %}bg-primary-50 text-primary-700 border border-primary-200
+          {% else %}bg-cream-100 text-primary-500 border border-primary-100{% endif %}">
+          {{ score_pct }}%
+        </span>
+        <div class="mt-1.5 w-14 h-1 rounded-full bg-primary-100 overflow-hidden" role="progressbar"
+             aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="h-full rounded-full
+            {% if score_pct >= 75 %}bg-green-500
+            {% elif score_pct >= 50 %}bg-accent
+            {% else %}bg-primary-400{% endif %}"
+            style="width: {{ score_pct }}%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snippet -->
+    <div class="px-5 py-3 font-sans text-sm text-primary-700 leading-relaxed" id="{{ card_id }}-snippet">
+      {{ r.text | safe }}
+    </div>
+
+    <!-- Card footer -->
+    <div class="px-5 py-2.5 bg-cream-50 border-t border-primary-50 flex items-center justify-between">
+      <span class="font-ui text-xs text-primary-400">Score: {{ "%.4f" | format(r.score) }}</span>
+      <a href="{{ r.href }}" target="_blank" rel="noopener noreferrer"
+         class="font-ui text-xs font-medium text-accent hover:text-accent-hover flex items-center gap-1 transition-colors">
+        Open document
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+        </svg>
+      </a>
+    </div>
+
+  </article>
+  {% endfor %}
+</div>
+
+<!-- ── Pagination ─────────────────────────────────────────────────── -->
+{% if results | length >= 10 %}
+<nav class="mt-8 flex items-center justify-between font-ui text-sm" aria-label="Pagination">
+  <span class="text-primary-400 text-xs">Showing {{ results | length }} results</span>
+  <div class="flex items-center gap-1">
+    <button disabled
+      class="inline-flex items-center px-3 py-1.5 rounded border border-primary-200 text-primary-400 cursor-not-allowed text-xs"
+      aria-label="Previous page">
+      &larr; Prev
+    </button>
+    <button
+      class="inline-flex items-center px-3 py-1.5 rounded border border-primary-200 text-primary-600 hover:bg-primary-50 text-xs"
+      aria-label="Next page">
+      Next &rarr;
+    </button>
+  </div>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- ── No results ─────────────────────────────────────────────────── -->
+<div class="rounded-lg border border-dashed border-primary-200 bg-cream-100 px-8 py-12 text-center" role="status">
+  <svg class="mx-auto w-10 h-10 text-primary-300 mb-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 15.803a7.5 7.5 0 0 0 10.607 0Z"/>
+  </svg>
+  <h2 class="font-ui font-semibold text-primary-700 text-base mb-1">No results found</h2>
+  <p class="font-ui text-sm text-primary-500 mb-4">
+    No documents matched &ldquo;{{ query | e }}&rdquo;.
+  </p>
+  <ul class="font-ui text-xs text-primary-400 space-y-1 text-left inline-block">
+    <li>&bull; Try broader or different search terms</li>
+    <li>&bull; Check that relevant documents have been indexed</li>
+    <li>&bull; Remove source-type filters in the sidebar</li>
+  </ul>
+  <div class="mt-5">
+    <a href="/" class="font-ui text-sm text-accent hover:text-accent-hover hover:underline">&larr; Back to search</a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
