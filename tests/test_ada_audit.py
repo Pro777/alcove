@@ -14,11 +14,19 @@ AUDIT_PY = REPO_ROOT / "tools" / "ada-audit" / "audit.py"
 
 @pytest.fixture(scope="module")
 def ada():
-    spec = importlib.util.spec_from_file_location("audit", AUDIT_PY)
+    _mod_key = "ada_audit_test_module"
+    spec = importlib.util.spec_from_file_location(_mod_key, AUDIT_PY)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {AUDIT_PY}")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["audit"] = mod
+    prev = sys.modules.get(_mod_key)
+    sys.modules[_mod_key] = mod
     spec.loader.exec_module(mod)
-    return mod
+    yield mod
+    if prev is None:
+        sys.modules.pop(_mod_key, None)
+    else:
+        sys.modules[_mod_key] = prev
 
 
 def _violations_by_rule(violations, rule):
@@ -258,6 +266,31 @@ class TestTableHeaders:
 
     def test_no_table_no_violation(self, ada):
         html = "<html lang='en'><body><p>No table here</p></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "table-headers")
+        assert vs == []
+
+    def test_nested_table_outer_without_th_is_warning(self, ada):
+        """Outer table with no <th> should warn even when inner table has <th>."""
+        html = (
+            "<html lang='en'><body>"
+            "<table><tr><td>"
+            "<table><tr><th>Inner header</th></tr></table>"
+            "</td></tr></table>"
+            "</body></html>"
+        )
+        vs = _violations_by_rule(ada.audit_html(html), "table-headers")
+        # The outer table has no direct <th> — must still warn.
+        assert len(vs) == 1
+
+    def test_nested_table_both_with_th_pass(self, ada):
+        """Both outer and inner tables with <th> should produce no violations."""
+        html = (
+            "<html lang='en'><body>"
+            "<table><tr><th>Outer header</th><td>"
+            "<table><tr><th>Inner header</th></tr></table>"
+            "</td></tr></table>"
+            "</body></html>"
+        )
         vs = _violations_by_rule(ada.audit_html(html), "table-headers")
         assert vs == []
 

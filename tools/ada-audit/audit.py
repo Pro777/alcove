@@ -63,6 +63,7 @@ class _Element:
     line: int | None
     text: str = ""
     in_label: bool = False  # True when this element is a descendant of a <label>
+    has_th: bool = False    # For <table> elements: True when a direct/nested <th> was seen
 
 
 # Void elements never have a closing tag and must not be pushed onto the stack.
@@ -80,6 +81,8 @@ class _HTMLCollector(HTMLParser):
         self.elements: list[_Element] = []
         self._stack: list[_Element] = []
         self.lang: str | None = None
+        # Stack of open <table> elements; used to track has_th per table.
+        self._table_stack: list[_Element] = []
 
     def _in_label(self) -> bool:
         return any(e.tag == "label" for e in self._stack)
@@ -98,6 +101,12 @@ class _HTMLCollector(HTMLParser):
         if lower_tag == "html" and "lang" in attr_dict:
             self.lang = attr_dict["lang"].strip()
 
+        if lower_tag == "table":
+            self._table_stack.append(elem)
+        elif lower_tag == "th" and self._table_stack:
+            # Mark the innermost open table as having a header cell.
+            self._table_stack[-1].has_th = True
+
         # Void elements are self-closing — never push onto the stack.
         if lower_tag not in _VOID_TAGS:
             self._stack.append(elem)
@@ -112,6 +121,8 @@ class _HTMLCollector(HTMLParser):
         lower_tag = tag.lower()
         if lower_tag in _VOID_TAGS:
             return
+        if lower_tag == "table" and self._table_stack:
+            self._table_stack.pop()
         for i in range(len(self._stack) - 1, -1, -1):
             if self._stack[i].tag == lower_tag:
                 self._stack.pop(i)
@@ -277,32 +288,18 @@ def _rule_link_text(collector: _HTMLCollector) -> Iterator[Violation]:
 def _rule_table_headers(collector: _HTMLCollector) -> Iterator[Violation]:
     """Data tables should have <th> elements (WCAG 1.3.1).
 
-    Since end-tags are not tracked in ``collector.elements``, table boundaries
-    are approximated by element position: the "section" belonging to a given
-    ``<table>`` spans from that element to the start of the next ``<table>``
-    (or end of list).  This is accurate for non-nested tables.
+    ``has_th`` is set on each ``<table>`` element by ``_HTMLCollector`` during
+    parsing; nested tables are handled correctly because each table tracks its
+    own flag independently.
     """
-    table_positions = [
-        (i, elem) for i, elem in enumerate(collector.elements) if elem.tag == "table"
-    ]
-    if not table_positions:
-        return
-
-    total = len(collector.elements)
-    for pos_idx, (elem_idx, table_elem) in enumerate(table_positions):
-        next_table_idx = (
-            table_positions[pos_idx + 1][0]
-            if pos_idx + 1 < len(table_positions)
-            else total
-        )
-        section = collector.elements[elem_idx:next_table_idx]
-        if not any(e.tag == "th" for e in section):
+    for elem in collector.elements:
+        if elem.tag == "table" and not elem.has_th:
             yield Violation(
                 rule="table-headers",
                 severity="warning",
                 message="Table appears to have no <th> header cells (WCAG 1.3.1)",
                 element="<table>",
-                line=table_elem.line,
+                line=elem.line,
             )
 
 
