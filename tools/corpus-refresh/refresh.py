@@ -27,7 +27,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator
 from urllib import error as urllib_error, parse, request
@@ -39,7 +39,7 @@ from urllib import error as urllib_error, parse, request
 
 
 def _iso_now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _fetch_json(url: str, *, timeout: int = 30, retries: int = 3) -> dict:
@@ -193,7 +193,7 @@ def fetch_arxiv_since(
 
     Args:
         query: arXiv search query string (e.g. ``"cat:cs.AI"``).
-        since: Only return papers with ``updated >= since`` (UTC).
+        since: Only return papers with ``updated >= since`` (timezone.utc).
         max_results: Maximum number of results per request.
         timeout: HTTP timeout in seconds.
     """
@@ -209,13 +209,13 @@ def fetch_arxiv_since(
     xml_bytes = _fetch_bytes(url, timeout=timeout)
     papers = _parse_arxiv_feed(xml_bytes)
     # Client-side filter: only keep papers whose last revision is >= since.
-    since_aware = since if since.tzinfo is not None else since.replace(tzinfo=UTC)
+    since_aware = since if since.tzinfo is not None else since.replace(tzinfo=timezone.utc)
     filtered: list[ArxivPaper] = []
     for p in papers:
         try:
             updated_dt = datetime.fromisoformat(p.updated)
             if updated_dt.tzinfo is None:
-                updated_dt = updated_dt.replace(tzinfo=UTC)
+                updated_dt = updated_dt.replace(tzinfo=timezone.utc)
             if updated_dt >= since_aware:
                 filtered.append(p)
         except (ValueError, AttributeError):
@@ -239,7 +239,7 @@ def fetch_psyarxiv_since(
     """Yield PsyArXiv preprint metadata dicts updated since *since*.
 
     Args:
-        since: Only return preprints modified after this UTC datetime.
+        since: Only return preprints modified after this timezone.utc datetime.
         max_results: Total cap on results to fetch.
         timeout: HTTP timeout per request.
     """
@@ -356,7 +356,7 @@ def refresh_arxiv(
     if since_str:
         since = datetime.fromisoformat(since_str)
     else:
-        since = datetime.now(UTC) - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Capture the run boundary BEFORE fetching so that records added during the
     # run are included in the next window and never silently dropped.
@@ -410,7 +410,7 @@ def refresh_psyarxiv(
     if since_str:
         since = datetime.fromisoformat(since_str)
     else:
-        since = datetime.now(UTC) - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
     run_ts = _iso_now()
     _MAX_RESULTS = 500
