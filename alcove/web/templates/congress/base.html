@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Alcove Congress{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            /* Research-tool palette: slate-blue + warm cream */
+            primary: {
+              50:  '#f0f4f8',
+              100: '#d9e2ec',
+              200: '#bcccdc',
+              300: '#9fb3c8',
+              400: '#829ab1',
+              500: '#627d98',
+              600: '#486581',
+              700: '#334e68',
+              800: '#243b53',
+              900: '#102a43',
+            },
+            cream: {
+              50:  '#fdfaf6',
+              100: '#faf3e7',
+              200: '#f5e6ce',
+            },
+            accent: {
+              DEFAULT: '#1a56db',
+              hover:   '#1e429f',
+            },
+          },
+          fontFamily: {
+            sans: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+            ui:   ['"Inter"', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .font-ui { font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="h-full bg-cream-50 text-primary-900">
+
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-3 focus:py-1 focus:text-accent focus:underline font-ui text-sm">
+    Skip to main content
+  </a>
+
+  <div class="flex h-full min-h-screen">
+
+    <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+    <aside class="hidden lg:flex flex-col w-64 bg-primary-900 text-primary-100 shrink-0">
+
+      <!-- Logo / wordmark -->
+      <div class="px-6 py-5 border-b border-primary-700">
+        <a href="/" class="flex items-center gap-2 group">
+          <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-accent text-white font-ui font-semibold text-sm">A</span>
+          <span class="font-ui font-semibold text-white text-base tracking-tight group-hover:text-primary-100">Alcove</span>
+          <span class="font-ui text-xs text-primary-400 ml-0.5 mt-0.5">.congress</span>
+        </a>
+      </div>
+
+      <!-- Nav -->
+      <nav class="px-3 py-4 flex-1 space-y-1" aria-label="Primary navigation">
+        <a href="/"
+           class="flex items-center gap-2.5 px-3 py-2 rounded-md font-ui text-sm text-primary-200 hover:text-white hover:bg-primary-700 transition-colors
+                  {% if request.path == '/' %}bg-primary-700 text-white{% endif %}">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          Search
+        </a>
+        <a href="/collections"
+           class="flex items-center gap-2.5 px-3 py-2 rounded-md font-ui text-sm text-primary-200 hover:text-white hover:bg-primary-700 transition-colors">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          Collections
+        </a>
+      </nav>
+
+      <!-- Filter panel slot (filled by child templates) -->
+      {% block sidebar_filters %}{% endblock %}
+
+      <!-- Footer -->
+      <div class="px-4 py-3 border-t border-primary-700 font-ui text-xs text-primary-500">
+        Runs locally &middot; No telemetry
+      </div>
+
+    </aside>
+
+    <!-- ── Mobile topbar ───────────────────────────────────────────── -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 z-30 bg-primary-900 text-white flex items-center px-4 h-12 gap-3">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-accent text-white font-ui font-semibold text-xs">A</span>
+      <span class="font-ui font-semibold text-sm tracking-tight">Alcove <span class="text-primary-400 font-normal">.congress</span></span>
+    </div>
+
+    <!-- ── Main content ────────────────────────────────────────────── -->
+    <div class="flex flex-col flex-1 overflow-auto lg:mt-0 mt-12">
+
+      <!-- Page header slot -->
+      {% block page_header %}{% endblock %}
+
+      <main id="main-content" class="flex-1 px-6 py-6 max-w-5xl w-full mx-auto">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="px-6 py-3 border-t border-primary-100 font-ui text-xs text-primary-400 text-center">
+        Alcove.congress &mdash; legislative research, locally
+      </footer>
+
+    </div>
+  </div>
+
+</body>
+</html>
