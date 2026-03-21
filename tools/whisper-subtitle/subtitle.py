@@ -111,6 +111,8 @@ def segments_to_cues(
     for seg in segments:
         start = float(seg["start"])
         end = float(seg["end"])
+        if end < start:
+            continue  # skip malformed segments with inverted timestamps
         text = seg.get("text", "").strip()
 
         if strip_filler:

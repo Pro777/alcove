@@ -154,6 +154,12 @@ class TestSegmentsToCues:
         )
         assert len(cues) == 2
 
+    def test_inverted_timestamps_skipped(self, sub):
+        segs = [self._seg(5, 3, "bad"), self._seg(3, 5, "good")]
+        cues = sub.segments_to_cues(segs)
+        assert len(cues) == 1
+        assert cues[0].text == "good"
+
 
 # ---------------------------------------------------------------------------
 # SRT / VTT output
