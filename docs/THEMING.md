@@ -1,5 +1,9 @@
 # Theming
 
+> **Alcove is a retrieval system** — it matches and returns documents; it does not generate text.
+> **Authentication is not built-in.** If you need access control, place Alcove behind a reverse
+> proxy (nginx, Caddy, etc.) that handles auth before requests reach the API.
+
 Alcove's web UI uses CSS custom properties (variables) for all color and typography values.
 Theming is entirely CSS-based — no build step required.
 
@@ -121,11 +125,10 @@ remove the `<button class="theme-toggle">` block from `base.html` and add a fixe
 > convenience only. Production deployments should self-host fonts or use a
 > system font stack (see below).
 
-The default typeface in the demo files is
-[Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk), currently
-loaded from the Google Fonts CDN. This introduces an external dependency that
-conflicts with fully offline operation. To replace with a self-hosted or
-system font:
+**Recommended for production: use a system font stack (no external requests).**
+The demo files load [Space Grotesk](https://fonts.google.com/specimen/Space+Grotesk)
+from the Google Fonts CDN as an optional convenience enhancement — this is not the
+default for deployments. To remove the external dependency and use system fonts:
 
 1. Remove the `<link rel="preconnect">` and `<link href="https://fonts.googleapis.com">` lines from `base.html`.
 2. Override `--font-sans` in your custom CSS to point to your font stack.
