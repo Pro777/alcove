@@ -230,7 +230,7 @@ def test_fetch_issues_follows_pagination(gi):
 
     def fake_fetch(url, token):
         raw = pages[idx[0]]
-        headers = {"Link": '<http://fake/page2>; rel="next"'} if idx[0] == 0 else {}
+        headers = {"Link": '<https://api.github.com/repos/foo/bar/issues?page=2>; rel="next"'} if idx[0] == 0 else {}
         idx[0] += 1
         return raw, headers
 

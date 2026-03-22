@@ -88,6 +88,7 @@ def load_state(state_path: Path = STATE_PATH) -> dict:
 
 
 def save_state(state: dict, state_path: Path = STATE_PATH) -> None:
+    state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -125,13 +126,21 @@ def _make_request(url: str, token: str | None = None) -> urllib.request.Request:
 
 
 def _parse_next_link(link_header: str | None) -> str | None:
-    """Extract the ``rel="next"`` URL from a GitHub Link header."""
+    """Extract the ``rel="next"`` URL from a GitHub Link header.
+
+    Returns ``None`` if no next link is present or if the URL fails
+    validation (must be ``https`` and hosted on ``api.github.com``).
+    """
     if not link_header:
         return None
     for part in link_header.split(","):
         url_part, *rel_parts = (p.strip() for p in part.split(";"))
         if any('rel="next"' in r for r in rel_parts):
-            return url_part.strip("<>")
+            candidate = url_part.strip("<>")
+            parsed = urllib.parse.urlparse(candidate)
+            if parsed.scheme != "https" or not parsed.netloc.endswith("api.github.com"):
+                return None
+            return candidate
     return None
 
 
@@ -153,10 +162,7 @@ def fetch_issues(
     where the second element is response headers.
     """
     if fetch_fn is None:
-        def fetch_fn(url: str, tok: str | None) -> tuple[bytes, dict]:
-            req = _make_request(url, tok)
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read(), dict(resp.headers)
+        raise ValueError("fetch_fn is required; pass a real fetcher or a test stub")
 
     params: dict[str, str] = {
         "state": "all",
@@ -216,10 +222,7 @@ def fetch_prs(
     ``fetch_fn`` is injectable for testing.
     """
     if fetch_fn is None:
-        def fetch_fn(url: str, tok: str | None) -> tuple[bytes, dict]:
-            req = _make_request(url, tok)
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                return resp.read(), dict(resp.headers)
+        raise ValueError("fetch_fn is required; pass a real fetcher or a test stub")
 
     params: dict[str, str] = {
         "state": "all",
@@ -401,6 +404,11 @@ def main(argv: list[str] | None = None) -> int:
         repo_slug = args.repo.replace("/", "_")
         out = repo_root / "data" / "raw" / "github" / f"{repo_slug}.jsonl"
 
+    def _real_fetch(url: str, tok: str | None) -> tuple[bytes, dict]:
+        req = _make_request(url, tok)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.read(), dict(resp.headers)
+
     run(
         args.repo,
         item_types,
@@ -408,6 +416,7 @@ def main(argv: list[str] | None = None) -> int:
         state_path=Path(args.state),
         dry_run=args.dry_run,
         token=token,
+        fetch_fn=_real_fetch,
     )
     return 0
 
