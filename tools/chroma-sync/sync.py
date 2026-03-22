@@ -72,12 +72,12 @@ from typing import Any
 
 def _make_http_client(host: str, port: int):
     import chromadb
-    return chromadb.HttpClient(host=host, port=port)
+    return chromadb.HttpClient(host=host, port=port, settings=chromadb.Settings(anonymized_telemetry=False))
 
 
 def _make_persistent_client(path: str):
     import chromadb
-    return chromadb.PersistentClient(path=path)
+    return chromadb.PersistentClient(path=path, settings=chromadb.Settings(anonymized_telemetry=False))
 
 
 # ---------------------------------------------------------------------------
@@ -193,11 +193,13 @@ def import_collections(
         total = 0
         for start in range(0, len(ids), IMPORT_BATCH_SIZE):
             end = start + IMPORT_BATCH_SIZE
+            doc_slice = docs[start:end]
             batch_kwargs: dict[str, Any] = {
                 "ids": ids[start:end],
-                "documents": docs[start:end],
                 "metadatas": [m or {} for m in metas[start:end]],
             }
+            if any(d is not None for d in doc_slice):
+                batch_kwargs["documents"] = doc_slice
             if embeddings:
                 batch_kwargs["embeddings"] = embeddings[start:end]
             coll.upsert(**batch_kwargs)
