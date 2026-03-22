@@ -84,6 +84,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Callable
@@ -119,6 +120,10 @@ TRUSTED_KEYS_FILENAME = "trusted_keys.json"
 VALID = "valid"
 INVALID = "invalid"
 UNTRUSTED = "untrusted"
+
+# Whitelist regex for plugin names used in path construction.
+# Only [a-zA-Z0-9_-] are permitted — no path separators, no dots, no spaces.
+_PLUGIN_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 # ---------------------------------------------------------------------------
 # Manifest helpers
@@ -241,7 +246,31 @@ class PluginRegistry:
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
+    def _validate_plugin_name(self, name: str) -> None:
+        """Raise ValueError if *name* is unsafe for use in a filesystem path.
+
+        Enforces a strict whitelist (``[a-zA-Z0-9_-]`` only) and then
+        resolves the candidate path to assert it stays inside
+        ``self._plugins_dir``.
+        """
+        if not name:
+            raise ValueError("Plugin name must not be empty")
+        if not _PLUGIN_NAME_RE.match(name):
+            raise ValueError(
+                f"Plugin name {name!r} contains invalid characters; "
+                "only [a-zA-Z0-9_-] are allowed"
+            )
+        # Belt-and-suspenders: resolve and assert confinement.
+        # Only applicable when _plugins_dir exists on the real filesystem.
+        plugins_dir_resolved = self._plugins_dir.resolve()
+        candidate = (self._plugins_dir / f"{name}.json").resolve()
+        if not str(candidate).startswith(str(plugins_dir_resolved)):
+            raise ValueError(
+                f"Plugin name {name!r} would escape the plugins directory"
+            )
+
     def _manifest_path(self, name: str) -> Path:
+        self._validate_plugin_name(name)
         return self._plugins_dir / f"{name}.json"
 
     # ------------------------------------------------------------------
@@ -276,11 +305,14 @@ class PluginRegistry:
         if not isinstance(perms, list):
             errors.append("'permissions' must be a list")
             perms = []
-        unknown = sorted(set(perms) - ALLOWED_PERMISSIONS)
+        # Filter to string-only items before set operations to prevent
+        # TypeError from non-hashable entries (e.g. lists, dicts).
+        valid_perms = [p for p in perms if isinstance(p, str)]
+        unknown = sorted(set(valid_perms) - ALLOWED_PERMISSIONS)
         if unknown:
             errors.append(f"unrecognised permissions: {unknown}")
 
-        high_trust = sorted(set(perms) & HIGH_TRUST_PERMISSIONS)
+        high_trust = sorted(set(valid_perms) & HIGH_TRUST_PERMISSIONS)
         for p in high_trust:
             warnings.append(f"high-trust permission declared: {p!r}")
 
@@ -296,12 +328,18 @@ class PluginRegistry:
 
         fingerprint = manifest_fingerprint(manifest)
 
-        # Signature check
+        # Signature / public key consistency check:
+        # public_key_pem without signature is always INVALID — the key
+        # serves no purpose without a corresponding signature to verify.
+        if manifest.get("public_key_pem") and not manifest.get("signature"):
+            errors.append("signature missing for provided public_key_pem")
+
+        # Signature check (only when a signature field is present)
         sig_ok, sig_reason = _verify_signature(manifest)
         if not sig_ok and manifest.get("signature"):
             errors.append(f"signature invalid: {sig_reason}")
 
-        # Trust check (only if signature is present and valid)
+        # Trust check (only if no errors so far and public key is present)
         status = VALID
         if errors:
             status = INVALID
@@ -399,9 +437,17 @@ class PluginRegistry:
         Raises
         ------
         ValueError
-            If a dependency is missing from *manifests* or if circular
-            dependencies are detected.
+            If a dependency is missing from *manifests*, if duplicate plugin
+            names are detected, or if circular dependencies are present.
         """
+        # Detect duplicate plugin names before building the lookup dict.
+        seen_names: set[str] = set()
+        for m in manifests:
+            name = m["name"]
+            if name in seen_names:
+                raise ValueError(f"Duplicate plugin name: {name!r}")
+            seen_names.add(name)
+
         by_name: dict[str, dict] = {m["name"]: m for m in manifests}
 
         # Verify all depends_on names are present

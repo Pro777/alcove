@@ -180,15 +180,34 @@ class TestValidate:
         result = _reg().validate(m)
         assert result["status"] == VALID
 
-    def test_pubkey_without_trust_is_untrusted(self):
+    def test_pubkey_without_signature_is_invalid(self):
+        # Fix #3: public_key_pem without a signature must be INVALID, not UNTRUSTED.
         m = _minimal_manifest(public_key_pem="-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----")
         result = _reg().validate(m)
-        assert result["status"] == UNTRUSTED
+        assert result["status"] == INVALID
+        assert any("signature missing" in e for e in result["errors"])
 
     def test_permissions_not_list_is_invalid(self):
         m = _minimal_manifest(permissions="read_collection")
         result = _reg().validate(m)
         assert result["status"] == INVALID
+
+    def test_non_string_permission_does_not_raise_type_error(self):
+        # Fix #2: non-string/non-hashable items in permissions must not cause TypeError.
+        # Non-string entries are silently filtered; the remaining valid string
+        # permissions determine the status.
+        m = _minimal_manifest(permissions=[["nested", "list"], "read_collection"])
+        # Should not raise TypeError; "read_collection" is valid so status is VALID.
+        result = _reg().validate(m)
+        assert result["status"] == VALID
+
+    def test_unhashable_permission_entry_is_filtered(self):
+        # Fix #2: dict entries in permissions are non-hashable and must be filtered
+        # out without raising TypeError.  Remaining string perms govern the result.
+        m = _minimal_manifest(permissions=[{"key": "val"}, "read_collection"])
+        # Should not raise; dict entry is filtered, "read_collection" is valid.
+        result = _reg().validate(m)
+        assert result["status"] == VALID
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +243,67 @@ class TestAdd:
 
 
 # ---------------------------------------------------------------------------
+# Path traversal guard (_manifest_path / _validate_plugin_name)
+# ---------------------------------------------------------------------------
+
+class TestPathTraversalGuard:
+    def _reg_real(self, tmp_path) -> PluginRegistry:
+        """Registry backed by a real temp directory (needed for .resolve())."""
+        return PluginRegistry(tmp_path)
+
+    def test_valid_name_accepted(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        # Should not raise
+        path = reg._manifest_path("my-plugin")
+        assert path.name == "my-plugin.json"
+
+    def test_valid_name_with_underscore_accepted(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        path = reg._manifest_path("my_plugin_v2")
+        assert path.name == "my_plugin_v2.json"
+
+    def test_empty_name_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="must not be empty"):
+            reg._manifest_path("")
+
+    def test_dotdot_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="invalid characters"):
+            reg._manifest_path("../evil")
+
+    def test_forward_slash_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="invalid characters"):
+            reg._manifest_path("sub/evil")
+
+    def test_backslash_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="invalid characters"):
+            reg._manifest_path("sub\\evil")
+
+    def test_dot_in_name_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="invalid characters"):
+            reg._manifest_path("my.plugin")
+
+    def test_space_in_name_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError, match="invalid characters"):
+            reg._manifest_path("my plugin")
+
+    def test_get_with_traversal_name_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError):
+            reg.get("../etc/passwd")
+
+    def test_remove_with_traversal_name_raises(self, tmp_path):
+        reg = self._reg_real(tmp_path)
+        with pytest.raises(ValueError):
+            reg.remove("../../outside")
+
+
+# ---------------------------------------------------------------------------
 # PluginRegistry.trust_key
 # ---------------------------------------------------------------------------
 
@@ -244,17 +324,16 @@ class TestTrustKey:
         assert fp in trusted
         assert trusted[fp]["label"] == "dev"
 
-    def test_manifest_with_trusted_key_is_valid(self):
+    def test_manifest_with_trusted_key_no_sig_is_invalid(self):
+        # Fix #3: even a trusted key is insufficient without a signature.
         store: dict = {}
         reg = _reg(store)
         pem = "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----"
         reg.trust_key(pem, label="dev")
         m = _minimal_manifest(public_key_pem=pem)
         result = reg.validate(m)
-        # Status is valid or untrusted depending on sig presence — key IS trusted now
-        assert result["status"] != INVALID
-        # No "not in trusted keyring" warning
-        assert not any("not in trusted keyring" in w for w in result["warnings"])
+        assert result["status"] == INVALID
+        assert any("signature missing" in e for e in result["errors"])
 
     def test_multiple_keys_can_be_trusted(self):
         store: dict = {}
@@ -398,20 +477,17 @@ class TestResolveOrder:
         assert names.index("charlie") < names.index("delta")
 
     def test_missing_dependency_raises(self):
-        import pytest
         bravo = self._make("bravo", depends_on=["alpha"])
         with pytest.raises(ValueError, match="alpha"):
             _reg().resolve_order([bravo])
 
     def test_direct_circular_dependency_raises(self):
-        import pytest
         alpha = self._make("alpha", depends_on=["bravo"])
         bravo = self._make("bravo", depends_on=["alpha"])
         with pytest.raises(ValueError, match="[Cc]ircular"):
             _reg().resolve_order([alpha, bravo])
 
     def test_indirect_circular_dependency_raises(self):
-        import pytest
         alpha = self._make("alpha", depends_on=["charlie"])
         bravo = self._make("bravo", depends_on=["alpha"])
         charlie = self._make("charlie", depends_on=["bravo"])
@@ -422,3 +498,17 @@ class TestResolveOrder:
         m = _minimal_manifest(name="solo")  # no depends_on key at all
         result = _reg().resolve_order([m])
         assert result[0]["name"] == "solo"
+
+    def test_duplicate_plugin_name_raises(self):
+        # Fix #4: duplicate names in the manifest list must raise ValueError.
+        alpha1 = self._make("alpha")
+        alpha2 = self._make("alpha")
+        with pytest.raises(ValueError, match="[Dd]uplicate"):
+            _reg().resolve_order([alpha1, alpha2])
+
+    def test_duplicate_plugin_name_message_contains_name(self):
+        # Fix #4: error message must include the offending name.
+        alpha1 = self._make("my-plugin")
+        alpha2 = self._make("my-plugin")
+        with pytest.raises(ValueError, match="my-plugin"):
+            _reg().resolve_order([alpha1, alpha2])
