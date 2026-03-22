@@ -34,8 +34,12 @@ def cs():
 # Helpers for fake ChromaDB objects
 # ---------------------------------------------------------------------------
 
-def _make_fake_collection(name: str, records: list[dict]):
-    """Return a mock ChromaDB collection with canned get() output."""
+def _make_fake_collection(name: str, records: list[dict], coll_metadata: dict | None = None):
+    """Return a mock ChromaDB collection with canned get() output.
+
+    The mock supports paginated access via ``limit`` / ``offset`` kwargs so
+    that the paginated export loop terminates correctly.
+    """
     ids = [r["id"] for r in records]
     documents = [r.get("document", "") for r in records]
     metadatas = [r.get("metadata", {}) for r in records]
@@ -43,12 +47,21 @@ def _make_fake_collection(name: str, records: list[dict]):
 
     coll = MagicMock()
     coll.name = name
-    coll.get.return_value = {
-        "ids": ids,
-        "documents": documents,
-        "metadatas": metadatas,
-        "embeddings": embeddings,
-    }
+    coll.metadata = coll_metadata or {}
+    coll.count.return_value = len(ids)
+
+    def _get(limit=None, offset=0, include=None, **kwargs):
+        start = offset or 0
+        end = start + limit if limit is not None else len(ids)
+        sliced_ids = ids[start:end]
+        return {
+            "ids": sliced_ids,
+            "documents": documents[start:end],
+            "metadatas": metadatas[start:end],
+            "embeddings": embeddings[start:end],
+        }
+
+    coll.get.side_effect = _get
     return coll
 
 
@@ -61,7 +74,7 @@ def _make_fake_client(collections: dict):
             raise Exception(f"Collection {name!r} does not exist")
         return collections[name]
 
-    def get_or_create_collection(name):
+    def get_or_create_collection(name, **kwargs):
         if name not in collections:
             collections[name] = _make_fake_collection(name, [])
         return collections[name]
@@ -136,6 +149,30 @@ def test_export_calls_get_with_embeddings(cs):
 
     call_args = coll.get.call_args
     assert "embeddings" in call_args.kwargs.get("include", [])
+
+
+def test_export_includes_collection_metadata(cs):
+    coll = _make_fake_collection("arxiv", _SAMPLE_RECORDS, coll_metadata={"hnsw:space": "cosine"})
+    client = _make_fake_client({"arxiv": coll})
+
+    result = cs.export_collections(["arxiv"], client_fn=lambda: client)
+
+    assert result["arxiv"]["metadata"] == {"hnsw:space": "cosine"}
+
+
+def test_export_paginates_large_collection(cs):
+    """Export fetches records in pages, not all at once."""
+    n = cs.EXPORT_BATCH_SIZE + 5
+    records = [{"id": f"id:{i}", "document": f"doc {i}", "embedding": [float(i)]} for i in range(n)]
+    coll = _make_fake_collection("big", records)
+    client = _make_fake_client({"big": coll})
+
+    result = cs.export_collections(["big"], client_fn=lambda: client)
+
+    assert len(result["big"]["ids"]) == n
+    # count() called once; get() called twice (two pages)
+    coll.count.assert_called_once()
+    assert coll.get.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +278,32 @@ def test_import_skips_empty_collection(cs):
 
     assert counts["empty"] == 0
     target_coll.upsert.assert_not_called()
+
+
+def test_import_passes_collection_metadata(cs):
+    """get_or_create_collection is called with the collection metadata from the dump."""
+    dump = {
+        "alcove_sync_version": 1,
+        "exported_at": "2026-03-19T10:00:00Z",
+        "collections": {
+            "arxiv": {
+                "metadata": {"hnsw:space": "cosine"},
+                "ids": ["a"],
+                "documents": ["hello"],
+                "metadatas": [{}],
+                "embeddings": [[0.5, 0.6]],
+            }
+        },
+    }
+    target_coll = MagicMock()
+    target_client = MagicMock()
+    target_client.get_or_create_collection.return_value = target_coll
+
+    cs.import_collections(dump, client_fn=lambda: target_client)
+
+    target_client.get_or_create_collection.assert_called_once_with(
+        "arxiv", metadata={"hnsw:space": "cosine"}
+    )
 
 
 def test_import_batches_large_collections(cs):

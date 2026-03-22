@@ -12,13 +12,13 @@ Usage
     # Export collections from primary:
     python3 tools/chroma-sync/sync.py export \\
         --collections arxiv psyarxiv \\
-        --chroma-host localhost --chroma-port 8003 \\
+        --src-host localhost --src-port 8003 \\
         --out /tmp/alcove-sync.json
 
     # Import on replica:
     python3 tools/chroma-sync/sync.py import \\
         --dump /tmp/alcove-sync.json \\
-        --chroma-path ~/.alcove/chroma
+        --dst-path ~/.alcove/chroma
 
     # Full sync in one step (must be run where both instances are reachable):
     python3 tools/chroma-sync/sync.py sync \\
@@ -46,6 +46,7 @@ Dump format
         "exported_at": "2026-03-19T10:00:00Z",
         "collections": {
             "arxiv": {
+                "metadata": {...},
                 "ids": [...],
                 "documents": [...],
                 "metadatas": [...],
@@ -84,6 +85,9 @@ def _make_persistent_client(path: str):
 # Export
 # ---------------------------------------------------------------------------
 
+EXPORT_BATCH_SIZE = 500
+
+
 def export_collections(
     collection_names: list[str],
     *,
@@ -95,6 +99,9 @@ def export_collections(
 
     ``client_fn`` is injectable for testing — signature:
     ``() -> chromadb.Client``
+
+    Records are fetched in pages of ``EXPORT_BATCH_SIZE`` to avoid loading
+    the entire collection into memory at once.
     """
     if client_fn is None:
         def client_fn():
@@ -105,17 +112,39 @@ def export_collections(
 
     for name in collection_names:
         coll = client.get_collection(name)
-        data = coll.get(include=["documents", "metadatas", "embeddings"])
+        total_count = coll.count()
+
+        ids: list[str] = []
+        documents: list[Any] = []
+        metadatas: list[Any] = []
+        embeddings: list[list[float]] = []
+
+        offset = 0
+        while offset < total_count:
+            page = coll.get(
+                limit=EXPORT_BATCH_SIZE,
+                offset=offset,
+                include=["documents", "metadatas", "embeddings"],
+            )
+            page_ids = page.get("ids") or []
+            if not page_ids:
+                break
+            ids.extend(page_ids)
+            documents.extend(page.get("documents") or [None] * len(page_ids))
+            metadatas.extend(page.get("metadatas") or [{}] * len(page_ids))
+            embeddings.extend(
+                list(e) for e in (page.get("embeddings") or [])
+            )
+            offset += len(page_ids)
+
         result[name] = {
-            "ids": data["ids"],
-            "documents": data.get("documents") or [],
-            "metadatas": data.get("metadatas") or [],
-            "embeddings": [
-                list(e) for e in (data.get("embeddings") or [])
-            ],
+            "metadata": getattr(coll, "metadata", None) or {},
+            "ids": ids,
+            "documents": documents,
+            "metadatas": metadatas,
+            "embeddings": embeddings,
         }
-        count = len(data["ids"])
-        print(f"  Exported {name}: {count} documents")
+        print(f"  Exported {name}: {len(ids)} documents")
 
     return result
 
@@ -182,8 +211,9 @@ def import_collections(
             counts[name] = 0
             continue
 
-        # Get-or-create so re-running is idempotent
-        coll = client.get_or_create_collection(name)
+        # Get-or-create so re-running is idempotent; restore collection metadata
+        coll_metadata = cdata.get("metadata") or None
+        coll = client.get_or_create_collection(name, metadata=coll_metadata)
 
         docs = cdata.get("documents") or [None] * len(ids)
         metas = cdata.get("metadatas") or [None] * len(ids)
